@@ -50,6 +50,8 @@ class Offer(models.Model):
     channel = models.CharField("频道", max_length=10, choices=Channel, default=Channel.DRAFT)
     title = models.CharField("权益", max_length=180)
     category = models.CharField("板块", max_length=10, choices=[(s, s) for s in ("数字权益", "生活服务", "购物")])
+    platform = models.CharField("领取平台（未核对时留空）", max_length=80, blank=True, default="", db_default="")
+    region = models.CharField("适用地区（未核对时留空）", max_length=80, blank=True, default="", db_default="")
     cost = models.CharField("实际支出或待确认项", max_length=200)
     conditions = models.TextField("适用条件")
     steps = models.TextField("参与步骤")
@@ -117,3 +119,12 @@ class RuleAnalysis(models.Model):
     excerpts = models.JSONField()
     usage = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    offer = models.ForeignKey(Offer, on_delete=models.CASCADE)
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "offer"], name="one_favorite_per_user_offer")]

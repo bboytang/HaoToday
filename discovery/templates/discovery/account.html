@@ -1,0 +1,5 @@
+{% extends "discovery/base.html" %}
+{% block title %}我的收藏 · HaoToday{% endblock %}
+{% block body %}<p>我的 / 私人清单</p><h1>我的收藏</h1>{% for item in favorites %}<article><small>{{ item.offer.category }} · {{ item.offer.get_channel_display }}</small><h2><a href="{% url 'offer' item.offer_id %}">{{ item.offer.title }}</a></h2><p>以详情页最新状态为准</p></article>{% empty %}<p>还没有收藏。打开一条情报，点击“收藏这条情报”即可保存。</p>{% endfor %}
+{% if favorites.has_previous %}<a href="?page={{ favorites.previous_page_number }}">上一页</a>{% endif %}{% if favorites.has_next %}<a href="?page={{ favorites.next_page_number }}">下一页</a>{% endif %}
+<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>退出个人账号</button></form>{% endblock %}

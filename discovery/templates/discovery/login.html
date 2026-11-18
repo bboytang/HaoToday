@@ -1,0 +1,4 @@
+{% extends "discovery/base.html" %}
+{% block title %}账号登录 · HaoToday{% endblock %}
+{% block body %}<h1>登录你的账号</h1><p>个人账号用于保存收藏。内测站访问口令不是个人账号。暂未开放公众注册。</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<input type="hidden" name="next" value="{{ next }}"><button>登录</button></form>{% endblock %}

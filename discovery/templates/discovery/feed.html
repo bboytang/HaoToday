@@ -1,4 +1,13 @@
 {% extends "discovery/base.html" %}
 {% block body %}<small>发现手记 / 今日</small><h1>值得出手的权益</h1><p>先看要花多少，再决定要不要参与。</p>
-<nav class="tabs" aria-label="情报频道"><a href="/" {% if channel == 'verified' %}aria-current="page"{% endif %}>已验证</a><a href="/?channel=lead" {% if channel == 'lead' %}aria-current="page"{% endif %}>抢先线索</a></nav>
-{% for o in offers %}<article><small>{{ o.category }} · {{ o.get_channel_display }}</small><h2><a href="{% url 'offer' o.pk %}">{{ o.title }}</a></h2><p>{{ o.display_cost }}</p><small>核对于 {{ o.checked_at|date:"m月d日 H:i" }} · 发现来源：<a href="https://www.gamerpower.com/">GamerPower</a></small></article>{% empty %}<article><h2>本频道暂时没有有效情报</h2><p>没有符合条件的活动时，我们保留空位，不用普通促销填充。</p></article>{% endfor %}{% endblock %}
+<nav class="tabs" aria-label="情报频道"><a href="{% querystring channel="verified" page=None %}" {% if channel == 'verified' %}aria-current="page"{% endif %}>已验证</a><a href="{% querystring channel="lead" page=None %}" {% if channel == 'lead' %}aria-current="page"{% endif %}>抢先线索</a></nav>
+<form class="filters" method="get" aria-label="筛选情报">
+<input type="hidden" name="channel" value="{{ channel }}">
+<label class="query">关键词<input type="search" name="q" maxlength="100" value="{{ q }}" placeholder="活动名称、条件或平台"></label>
+<label>板块<select name="category"><option value="">全部板块</option>{% for v in choices.category %}<option {% if v == selected.category %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+<label>领取平台<select name="platform"><option value="">全部平台</option>{% for v in choices.platform %}<option {% if v == selected.platform %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+<label>适用地区<select name="region"><option value="">全部地区</option>{% for v in choices.region %}<option {% if v == selected.region %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+<label><input type="checkbox" name="zero" value="1" {% if zero %}checked{% endif %}>仅已核实零支出</label>
+<button>查找情报</button>{% if filtered %}<a href="?channel={{ channel }}">清除筛选</a>{% endif %}</form>
+{% for o in offers %}<article><small>{{ o.category }} · {{ o.get_channel_display }}</small><h2><a href="{% url 'offer' o.pk %}">{{ o.title }}</a></h2><p>{{ o.display_cost }}</p><small>核对于 {{ o.checked_at|date:"m月d日 H:i" }} · 发现来源：<a href="https://www.gamerpower.com/">GamerPower</a></small></article>{% empty %}<article><h2>{% if filtered %}没有符合筛选条件的情报{% else %}本频道暂时没有有效情报{% endif %}</h2><p>没有符合条件的活动时，我们保留空位，不用普通促销填充。</p></article>{% endfor %}
+{% if offers.has_other_pages %}<nav aria-label="分页">{% if offers.has_previous %}<a href="{% querystring page=offers.previous_page_number %}">上一页</a>{% endif %} 第 {{ offers.number }} / {{ offers.paginator.num_pages }} 页 {% if offers.has_next %}<a href="{% querystring page=offers.next_page_number %}">下一页</a>{% endif %}</nav>{% endif %}{% endblock %}

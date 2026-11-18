@@ -80,3 +80,66 @@ class PublicTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, "尚未开始")
         self.assertNotContains(response, self.offer.official_url)
+
+    def test_filtered_feed_uses_only_visible_public_fields(self):
+        self.offer.platform = "测试商店"
+        self.offer.region = "上海"
+        self.offer.save()
+        params = dict(channel="lead", q="测试权益", category="数字权益", platform="测试商店", region="上海")
+        self.assertNotContains(self.client.get("/"), "测试商店")
+        self.offer.channel = "lead"
+        self.offer.save()
+        response = self.client.get("/", params)
+        self.assertEqual(list(response.context["offers"]), [self.offer])
+        for other in ({"region":"北京"}, {"platform":"其他"}, {"category":"购物"}, {"q":"内部测试原文"}, {"zero":"1"}):
+            self.assertEqual(list(self.client.get("/", params | other).context["offers"]), [])
+        self.offer.review_state = "withdrawn"
+        self.offer.status_reason = "测试撤回"
+        self.offer.save()
+        self.assertNotContains(self.client.get("/?channel=lead"), "测试商店")
+
+    def test_free_filter_counts_all_required_fees(self):
+        self.prepare_verified()
+        self.offer.payable_fen = 0
+        self.offer.save()
+        self.assertEqual(list(self.client.get("/?zero=1").context["offers"]), [])
+        self.offer.shipping_fen = 0
+        self.offer.save()
+        self.assertEqual(list(self.client.get("/?zero=1").context["offers"]), [self.offer])
+
+    def test_private_favorites_and_draft_visibility(self):
+        from django.contrib.auth import get_user_model
+        from .models import Favorite
+        users = [get_user_model().objects.create_user(name) for name in ("one", "two")]
+        path = f"{self.url}favorite/"
+        self.assertEqual(self.client.post(path, {"action":"save"}).status_code, 302)
+        self.client.force_login(users[0])
+        self.assertEqual(self.client.post(path, {"action":"save"}).status_code, 404)
+        self.offer.channel = "lead"
+        self.offer.save()
+        self.assertEqual(self.client.get(path).status_code, 405)
+        for _ in range(2):
+            self.assertRedirects(self.client.post(path, {"action":"save"}), self.url)
+        self.assertEqual(Favorite.objects.count(), 1)
+        self.assertContains(self.client.get("/account/"), self.offer.title)
+        self.client.force_login(users[1])
+        self.assertNotContains(self.client.get("/account/"), self.offer.title)
+        self.client.post(path, {"action":"remove","user":users[0].pk})
+        self.assertEqual(Favorite.objects.count(), 1)
+        self.offer.channel = "draft"
+        self.offer.save()
+        self.client.force_login(users[0])
+        self.assertNotContains(self.client.get("/account/"), self.offer.title)
+
+    def test_session_login_and_csrf(self):
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        get_user_model().objects.create_user("tester", password="Only-For-Test-123")
+        c = Client(enforce_csrf_checks=True)
+        self.assertContains(c.get("/account/login/"), "个人账号")
+        self.assertEqual(c.post("/account/login/", {"username":"tester"}).status_code, 403)
+        self.assertRedirects(c.post("/account/login/", {"username":"tester","password":"Only-For-Test-123",
+            "csrfmiddlewaretoken":c.cookies["csrftoken"].value}), "/account/")
+        self.assertEqual(c.post(f"{self.url}favorite/", {"action":"save"}).status_code, 403)
+        self.assertEqual(c.post("/account/logout/", {"csrfmiddlewaretoken":c.cookies["csrftoken"].value}).status_code, 302)
+        self.assertEqual(c.get("/account/").status_code, 302)
