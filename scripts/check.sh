@@ -13,6 +13,6 @@ for n in {1..40}; do
   docker exec "$id" pg_isready -h 127.0.0.1 -U "$PGUSER" >/dev/null && break
   sleep 1
 done
-for args in "check" "migrate --noinput" "makemigrations --check --dry-run" "test haotoday"; do
+for args in "check" "migrate --noinput" "makemigrations --check --dry-run" "test haotoday discovery"; do
   .venv/bin/python manage.py $args
 done
