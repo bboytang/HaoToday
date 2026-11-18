@@ -63,3 +63,7 @@
 - 新增设备授权、撤权、测试提醒、免打扰、加密保存端点及有限重试。scripts/check.sh 在一次性 PostgreSQL 执行至迁移 0012，31 项通过；签名与加密请求测试截断在网络边界，不是手机测试。
 - 服务器运行 upgrade.sh haotoday-app:t06-devices-1 成功，升级前备份 backups/pre-upgrade-20261118T152750Z.dump；systemctl enable --now haotoday-push.timer，首次运行 Result=success、processed=0。未向虚构端点投递。
 - 公网临时普通账号实测 /devices/ 登录隔离、页面公钥、manifest、SW 与图标，完成后删除测试账号。未观测到真实手机通知。回退先停推送定时器，再切回 t06-inbox-1；保留新增表及备份。不触及其他项目。
+
+### T07 · 候选来源与实测产量（2026-11-18）
+- 分别匿名 GET 京东联盟文档页和美团取链文档页，HTTP 200（14642 / 39508 字节）；前者只得到前端页，后者可读到签名要求。另查美团商品查询的配送费与起送口径。完整依据和进入下一步的条件见 SOURCES_AND_QUALITY。未发业务请求，未开生产源。
+- 首次对线上库执行 deploy/source-report.sql（psql，退出 0）。北京时间 23:30，14 天窗口实际只有 1 个成功采集日，GamerPower 4 成功 / 0 失败，基线 14、后续新增 0、后续新增且当前已验证 0。这不是连续 14 天或稳定产出的证据。此次未改应用、未重新部署。

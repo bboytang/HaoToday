@@ -6,3 +6,5 @@ T04 智谱 glm-4.7-flash 适配已部署，已使用服务器现有密钥完成�
 本机使用独立 Docker 开发库 haotoday-dev-pg（set -a; source .env; set +a）；scripts/check.sh 使用一次性 PostgreSQL。不要将凭据、浏览器会话或用户资料写进日志。
 
 T06 内测入口 /devices/。普通内测账号由运营方核实邮箱后运行 /opt/haotoday/create-tester.sh 创建。公网已验证登录、设备页、公钥及 PWA 资源；30 秒定时器首次运行 processed=0。下一步：在 iPhone 主屏幕 Web App 和实际 Android 浏览器授权，先测试提醒，再跟踪真实订阅活动；分别记录受理和实际可见时刻。补测免打扰边界、补做预定活动到点唤醒。未获得手机证据前不宣称送达。无需等待手机即可推进 T07：优先对购物与生活各寻找一个可复查、允许持续使用的源，不合格的不接入。
+
+T07 已核查京东联盟与美团联盟，决策见 SOURCES_AND_QUALITY；勿重复把文档 HTTP 200 当作接入。可用 deploy/source-report.sql 重跑线上统计。接下来优先找免联盟账号且明确允许使用的品牌/机构内容源，同时验证非 API 发现方式；若有联盟媒体授权再走上述准入卡。
