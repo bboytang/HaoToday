@@ -18,3 +18,10 @@
 
 ### 14 天滚动观察
 仓库根目录执行：`ssh root@43.143.230.174 'cd /opt/haotoday && docker compose exec -T db psql -X -U haotoday -d haotoday' < deploy/source-report.sql`。只读快照，报告不含用户或活动详情。成功率仅针对有终态的成功/失败批次；缺跑、暂停不算成功。ok_days 是上海时区有成功采集的日期数，不是连续在线时长。首次目录存量与后续首次发现分开，new_verified_live 是后续新增中此刻有效且已验证的数量，不是累计高价值数量、准确率或领取成功率。没有独立复判就不报准确率。
+
+### 生活服务 · 香港场地 XML 实测（仅研究，不作为内地供给）
+[节目文件说明](https://data.gov.hk/en-data/dataset/hk-lcsd-event-event-cultural/resource/7a364aee-b1d0-4f89-959c-8819eae94257)列明每日更新。[平台条款](https://data.gov.hk/en/terms-and-conditions)允许按条件商用和非商用再利用，需清楚标明来源和知识产权归属；第三方链接不自动取得对应许可。数据提供方：香港特别行政区政府康乐及文化事务署，来自 DATA.GOV.HK；数据知识产权归政府及相关权利人。仅研究目录事实，不复制海报、联络人或第三方网页。
+- 复核命令：`curl -fsS --max-time 25 --max-filesize 8000000 -o /tmp/ht-lcsd.xml https://www.lcsd.gov.hk/datagovhk/event/events.xml && python3 scripts/inspect_lcsd.py /tmp/ht-lcsd.xml`。不要求账号、浏览器或模型；脚本不联网、写库或发布。传入自行从上述固定地址下载的样本。
+- 2026-11-18 抽取完整单批 1,064 条，按票价字段互斥划分：明确免费标记 225、正数票价表 180、未填票价 633、其余需核规则 26。免费标记中 131 条带政府域名 HTTPS 详情链接；不是 131 个已验证福利。
+- 资格反例：同一[东区项目页](https://www.cpo.gov.hk/zh-hk/event/tc-ed-2627/)对应多门课程。目录 ID 188469 的年龄栏为空，标题及说明却限定长者，开课早于采样日。不能按 URL 独自去重，不能把空字段解释为不限年龄，也不能用最后一节的日期代替报名截止日。
+- 决策：不加入生产，不计内地城市覆盖。免费文化活动不一定是限时优惠；没有明确的稀缺权益、开放报名和适用范围，不占用订阅用户的提醒。此验证证明可处理非 API 文件，不证明已持续发现内地商户福利。
