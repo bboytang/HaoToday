@@ -52,3 +52,14 @@ class Offer(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class OfferRevision(models.Model):
+    """一次活动内容变更后的完整副本；数据库触发器与原写入处于同一事务。"""
+
+    offer = models.ForeignKey(Offer, on_delete=models.PROTECT, related_name="revisions")
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    snapshot = models.JSONField()
+
+    class Meta:
+        ordering = ["-id"]

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run HaoToday discovery every 30 minutes
+
+[Timer]
+OnActiveSec=3s
+OnUnitInactiveSec=30min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

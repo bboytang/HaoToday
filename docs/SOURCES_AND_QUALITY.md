@@ -5,5 +5,5 @@
 
 ## 首源准入卡：GamerPower（数字权益发现源）
 - 2026-11-18 核对[运营方 API 说明及 Terms of Use](https://www.gamerpower.com/api-read)：允许个人与商业项目调用并展示，需可点击链接署名 GamerPower.com，不得冒称自有数据或未经许可出售数据。对外显示来自此源的线索时必须链接到 [GamerPower](https://www.gamerpower.com/)；不复制海报和全文。
-- 入口为 https://www.gamerpower.com/api/giveaways?type=game ，固定 HTTPS，不跟踪重定向。官方上限 10 请求/秒；计划每 30 分钟一次，当前仅人工运行批次，未启用计划任务。维护角色为采集负责人。上线前及条款变化时重新核对，后台关闭 Source.enabled 即停用。
+- 入口为 https://www.gamerpower.com/api/giveaways?type=game ，固定 HTTPS，不跟踪重定向。官方上限 10 请求/秒；计划每 30 分钟一次，服务器已启用 30 分钟 systemd 定时任务，本机仍按需运行。维护角色为采集负责人。上线前及条款变化时重新核对，后台关闭 Source.enabled 即停用。
 - 聚合方的详情链接不是发行方领取入口。日期原样保存（不猜时区）；不证明中国大陆适用、永久入库、运费或领取成功。仅为内部候选，不能把 API status、标题、宣传价值直接转为已验证情报。

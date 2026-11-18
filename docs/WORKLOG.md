@@ -23,3 +23,8 @@
 - 本机 docker build、docker save/load 部署。首次低权限迁移因源码权限 0700 被拒；检查镜像文件权限后仅放宽镜像内应用文件读取权限，重新构建 t03-2。迁移成功，应用进程 UID=10001，Gunicorn 运行。Caddy 成功获取受信任证书。
 - 服务器 sync_gamerpower 真实返回 baseline=14/new=0。按 source=gamerpower 与 external_id=3850 关联已有审核结论，full_clean 和期限检查后写入 Offer #1 lead，不覆盖其他数据。
 - 公网 HTTP 跳转 308，HTTPS 未认证 401；一次 netrc 输入探测未正常认证，改用 curl 配置传入凭据后，首页、线索列表、详情均返回 200，列表与详情都含 Knightica，TLS verify=0。认证访问 /admin/ 返回 404。scripts/check.sh 退出 0（8 测试）。真机待用户验证，尚无推送或公开注册。
+
+## 2026-11-18 UTC｜真实周期采集与 T04 版本记录
+- 目标主机确认无同名 systemd 定时器；systemd-analyze verify 成功（另一个已有云代理单元有无关 PIDFile 警告，未修改）。安装并启用项目专用 timer/service。systemctl 和 journalctl 确认北京时间 22:57:54 首次自动启动，22:57:56 正常退出，baseline=0/new=0/changed=0/unchanged=14，下一次计划 23:27:56。不能据此声称发现新增或长期稳定。
+- 新增 PostgreSQL 活动版本记录：创建、内容实质变更和批量更新均与原事务写快照；无变化与回滚不新增。新迁移为原有活动补当前基线，不伪造历史版本。后台只读查询。
+- scripts/check.sh 退出 0，9 项通过；本机持久库 migrate --noinput 成功，实际查询补建记录为 offer_id=1、channel=lead。线上仍是 T03 镜像，无 0003 迁移。真机、AI 和持续产量尚未验收。

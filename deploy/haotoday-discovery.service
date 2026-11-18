@@ -1,0 +1,10 @@
+[Unit]
+Description=HaoToday approved GamerPower catalog sync
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/haotoday
+ExecStart=/usr/bin/docker compose exec -T app python manage.py sync_gamerpower
+TimeoutStartSec=120

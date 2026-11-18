@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Observation, Offer, Run, Source
+from .models import Observation, Offer, OfferRevision, Run, Source
 
 
 @admin.register(Source)
@@ -38,3 +38,8 @@ class OfferAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "channel", "ends_at")
     list_filter = ("channel", "category")
     raw_id_fields = ("observation",)
+
+
+@admin.register(OfferRevision)
+class OfferRevisionAdmin(ReadOnlyAdmin):
+    list_display = ("id", "offer_id", "recorded_at")
