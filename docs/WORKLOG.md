@@ -58,3 +58,8 @@
 - 增加活动版本触发的消息生成：同事务、同用户同版本唯一；订阅按板块/关键词/平台/地区组合，线索默认不送。普通润色不提醒，实付降价相对各收件人上次实付计算；更正只写原收件人。消息中心登录隔离、分页、POST 标记本人消息已读。
 - 运行 scripts/check.sh，退出 0：26 项通过；用真实 PostgreSQL 的测试夹具验证多订阅去重、降价阈值、降至免费、取消订阅后错误更正、回滚、过期与跨账号拒绝。不是实际新活动的生产投递。
 - 升级前备份 backups/pre-upgrade-20261118T152042Z.dump；线上迁移 0011 成功，已部署 haotoday-app:t06-inbox-1。通过外部 HTTPS 和临时个人账号检查 /inbox/ 空状态及入口后删除账号。线上数据库实际查询 InboxMessage 为 0；未用历史活动制造提醒。下一步设备通道，尚未宣称手机系统送达。
+
+### T06 · 设备提醒内测（2026-11-18）
+- 新增设备授权、撤权、测试提醒、免打扰、加密保存端点及有限重试。scripts/check.sh 在一次性 PostgreSQL 执行至迁移 0012，31 项通过；签名与加密请求测试截断在网络边界，不是手机测试。
+- 服务器运行 upgrade.sh haotoday-app:t06-devices-1 成功，升级前备份 backups/pre-upgrade-20261118T152750Z.dump；systemctl enable --now haotoday-push.timer，首次运行 Result=success、processed=0。未向虚构端点投递。
+- 公网临时普通账号实测 /devices/ 登录隔离、页面公钥、manifest、SW 与图标，完成后删除测试账号。未观测到真实手机通知。回退先停推送定时器，再切回 t06-inbox-1；保留新增表及备份。不触及其他项目。

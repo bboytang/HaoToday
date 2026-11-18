@@ -16,13 +16,17 @@ def health(request):
     return JsonResponse({"status": "ok"})
 
 
-from discovery import accounts, views
+from discovery import accounts, devices, views
 
 urlpatterns = [
     path("", views.feed, name="feed"),
     path("offers/<int:pk>/", views.detail, name="offer"),
     path("account/", views.account, name="account"),
     path("inbox/", views.inbox, name="inbox"),
+    *[path(name, devices.asset, {"name":name}) for name in ("sw.js","manifest.webmanifest","icon-192.png","icon-512.png")],
+    path("devices/", devices.devices, name="devices"),
+    path("devices/register/", devices.register, name="device-register"),
+    path("devices/<int:pk>/action/", devices.action, name="device-action"),
     path("inbox/<int:pk>/read/", views.read_message, name="read-message"),
     path("subscriptions/", views.subscriptions, name="subscriptions"),
     path("subscriptions/<int:pk>/remove/", views.unsubscribe, name="unsubscribe"),

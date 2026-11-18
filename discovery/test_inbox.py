@@ -58,3 +58,18 @@ class InboxTests(TestCase):
             self.assertEqual(InboxMessage.objects.count(),1)
             transaction.set_rollback(True)
         self.assertFalse(InboxMessage.objects.exists())
+
+    def test_devices_queue_and_recheck_subscription_before_network(self):
+        from unittest.mock import patch
+        from .models import PushDevice,PushDelivery
+        from .push import dispatch_one
+        PushDevice.objects.create(user=self.user,endpoint_hash="fixture",sealed=b"test-only")
+        self.change(channel="verified")
+        job=PushDelivery.objects.get()
+        self.assertEqual(job.message.user_id,self.user.pk)
+        Subscription.objects.filter(user=self.user).delete()
+        with patch("discovery.push.transmit") as network:
+            self.assertTrue(dispatch_one())
+            network.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.state,"cancelled")

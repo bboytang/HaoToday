@@ -1,0 +1,10 @@
+[Unit]
+Description=Run HaoToday push delivery every 30 seconds
+
+[Timer]
+OnActiveSec=3s
+OnUnitInactiveSec=30s
+AccuracySec=2s
+
+[Install]
+WantedBy=timers.target

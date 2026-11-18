@@ -1,0 +1,10 @@
+[Unit]
+Description=HaoToday Web Push delivery
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/haotoday
+ExecStart=/usr/bin/docker compose exec -T app python manage.py dispatch_push
+TimeoutStartSec=200

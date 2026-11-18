@@ -198,3 +198,25 @@ class InboxMessage(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "revision"], name="one_inbox_per_user_revision")]
         indexes = [models.Index(fields=["user", "-id"], name="inbox_user_recent")]
+
+
+class PushDevice(models.Model):
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    endpoint_hash = models.CharField(max_length=64, unique=True)
+    sealed = models.BinaryField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    timezone = models.CharField(max_length=64, default="Asia/Shanghai")
+    quiet = models.BooleanField(default=False)
+
+
+class PushDelivery(models.Model):
+    device = models.ForeignKey(PushDevice, on_delete=models.CASCADE)
+    message = models.ForeignKey(InboxMessage, null=True, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    state = models.CharField(max_length=12, default="pending")
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_at = models.DateTimeField(db_index=True)
+    http_status = models.PositiveSmallIntegerField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["device", "message"], name="one_device_delivery_per_message")]
