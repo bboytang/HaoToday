@@ -228,6 +228,7 @@ class PushDelivery(models.Model):
     attempts = models.PositiveSmallIntegerField(default=0)
     next_at = models.DateTimeField(db_index=True)
     http_status = models.PositiveSmallIntegerField(null=True)
+    accepted_at = models.DateTimeField("收到推送服务受理响应的时间", null=True, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["device", "message"], name="one_device_delivery_per_message")]

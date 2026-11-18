@@ -55,6 +55,24 @@ class PushTests(TestCase):
         self.assertEqual((job.state,job.attempts),("expired",2))
         self.assertFalse(device.sealed)
 
+    @patch("discovery.push.transmit")
+    def test_only_provider_success_records_acceptance_time(self, send):
+        self.register()
+        device=PushDevice.objects.get()
+        self.client.post(f"/devices/{device.pk}/action/",{"action":"test"})
+        job=PushDelivery.objects.get()
+        send.side_effect=[503,201]
+        dispatch_one()
+        job.refresh_from_db()
+        self.assertIsNone(job.accepted_at)
+        retry = timezone.now()
+        PushDelivery.objects.update(next_at=retry)
+        dispatch_one()
+        job.refresh_from_db()
+        self.assertEqual((job.state,job.attempts),("accepted",2))
+        self.assertGreaterEqual(job.accepted_at,retry)
+        self.assertContains(self.client.get("/devices/"),"服务受理 "+timezone.localtime(job.accepted_at).strftime("%m-%d %H:%M:%S"))
+
     def test_assets(self):
         self.assertEqual(self.client.get("/sw.js").status_code,200)
         self.assertEqual(json.loads(b"".join(self.client.get("/manifest.webmanifest").streaming_content))["display"],"standalone")

@@ -129,6 +129,7 @@ def dispatch_one():
             job.http_status = status or None
             if status in (200,201,202,204):
                 job.state="accepted"
+                job.accepted_at=timezone.now()
             elif status in (404,410):
                 job.state="expired"
                 # 保留状态记录但销毁端点材料，后续不会为其排队。

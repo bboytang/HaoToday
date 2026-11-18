@@ -5,7 +5,7 @@
 {% for d in items %}<article><h2>设备 #{{ d.pk }}</h2><p>{{ d.timezone }} · {% if d.quiet %}22:00–08:00 免打扰{% else %}未设置免打扰{% endif %}{% if not d.sealed %} · 已失效{% endif %}</p>
 <form action="{% url 'device-action' d.pk %}" method="post">{% csrf_token %}<button name="action" value="test">发送测试提醒</button> <button name="action" value="{% if d.quiet %}normal{% else %}quiet{% endif %}">切换免打扰</button> <button name="action" value="remove">停止此设备提醒</button></form></article>{% endfor %}
 <h2>最近投递</h2><p>accepted 表示推送服务已受理，不代表你已看到。测试后请实际检查通知栏。</p>
-{% for job in jobs %}<p>设备 #{{ job.device_id }} · {% if job.message_id %}订阅消息{% else %}测试提醒{% endif %} · {{ job.state }} · {{ job.created_at|date:"m-d H:i" }}</p>{% empty %}<p>暂无记录。</p>{% endfor %}
+{% for job in jobs %}<p>设备 #{{ job.device_id }} · {% if job.message_id %}订阅消息{% else %}测试提醒{% endif %} · {{ job.state }} · 排队 {{ job.created_at|date:"m-d H:i:s" }}{% if job.accepted_at %} · 服务受理 {{ job.accepted_at|date:"m-d H:i:s" }}{% endif %}</p>{% empty %}<p>暂无记录。</p>{% endfor %}
 <script>
 const btn=document.querySelector('#enable'),out=document.querySelector('#out');
 if(!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) || !btn.dataset.key){
