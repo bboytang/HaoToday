@@ -50,6 +50,35 @@ class Offer(models.Model):
     checked_at = models.DateTimeField("核验时间")
     ends_at = models.DateTimeField("停止展示活动入口时间")
 
+    # None 表示未知；已核实无需支付的项目须明确填 0。
+    payable_fen = models.PositiveIntegerField("商品或服务实付（分，不含运费及另购会员）", null=True, blank=True)
+    shipping_fen = models.PositiveIntegerField("运费或配送费（分）", null=True, blank=True)
+    membership_fen = models.PositiveIntegerField("必须新增会员费（分）", null=True, blank=True)
+    reward_basis = models.TextField("权益证据（核验原文要点）", blank=True)
+    price_basis = models.TextField("成本证据（含配送费、续费条件）", blank=True)
+    eligibility_basis = models.TextField("资格证据（地区、账号及适用范围）", blank=True)
+    time_basis = models.TextField("有效期证据（原始时区）", blank=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            name="verified_requires_price_and_evidence",
+            condition=~models.Q(channel="verified") | models.Q(
+                payable_fen__isnull=False, shipping_fen__isnull=False, membership_fen__isnull=False,
+                reward_basis__regex=r"\S", price_basis__regex=r"\S",
+                eligibility_basis__regex=r"\S", time_basis__regex=r"\S",
+                official_url__startswith="https://", evidence_url__startswith="https://",
+                evidence__regex=r"\S", conditions__regex=r"\S", steps__regex=r"\S",
+            ),
+            violation_error_message="已验证须填写实付、配送费、新增会员费及各项证据，并提供 HTTPS 原始入口和核验依据。",
+        )]
+
+    @property
+    def display_cost(self):
+        if self.channel != self.Channel.VERIFIED:
+            return self.cost
+        total = self.payable_fen + self.shipping_fen + self.membership_fen
+        return f"必要支出 ¥{total // 100}.{total % 100:02d}（含配送费及必须新增的会员费）"
+
     def __str__(self):
         return self.title
 

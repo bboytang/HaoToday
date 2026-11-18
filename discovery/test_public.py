@@ -30,7 +30,27 @@ class PublicTests(TestCase):
         self.assertContains(detail, "https://www.gamerpower.com/")
         self.assertNotContains(detail, "内部测试原文")
 
+    def prepare_verified(self):
+        for field in ("conditions", "evidence", "steps", "reward_basis", "price_basis", "eligibility_basis", "time_basis"):
+            setattr(self.offer, field, "已核对测试条款")
+        self.offer.evidence_url = "https://example.org/rules"
+        self.offer.payable_fen = 1
+        self.offer.shipping_fen = 600
+        self.offer.membership_fen = 0
+        self.offer.channel = "verified"
+
+    def test_unknown_shipping_or_missing_eligibility_cannot_publish(self):
+        from django.db import IntegrityError, transaction
+        self.prepare_verified()
+        self.offer.save()
+        for invalid in ({"shipping_fen": None}, {"membership_fen": None}, {"eligibility_basis": "   "}, {"time_basis": ""}):
+            with self.subTest(invalid=invalid), self.assertRaises(IntegrityError), transaction.atomic():
+                Offer.objects.filter(pk=self.offer.pk).update(**invalid)
+        self.assertContains(self.client.get("/"), "¥6.01")
+        self.assertContains(self.client.get(self.url), "资格依据")
+
     def test_expired_not_actionable(self):
+        self.prepare_verified()
         self.offer.channel = "verified"
         self.offer.ends_at = timezone.now() - timedelta(seconds=1)
         self.offer.save()

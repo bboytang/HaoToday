@@ -1,6 +1,6 @@
 {% extends "discovery/base.html" %}
 {% block title %}{{ offer.title }} · HaoToday{% endblock %}
 {% block body %}<a href="{% url 'feed' %}?channel={{ offer.channel }}">← 返回频道</a><p>{{ offer.category }} / {{ offer.get_channel_display }}{% if expired %} · 已结束展示{% endif %}</p><h1>{{ offer.title }}</h1>
-<article><dl><dt>实际支出</dt><dd>{{ offer.cost }}</dd><dt>适用条件</dt><dd>{{ offer.conditions }}</dd><dt>怎么参与</dt><dd>{{ offer.steps }}</dd><dt>本站停止展示入口</dt><dd>{{ offer.ends_at|date:"Y-m-d H:i" }}（北京时间）</dd></dl>
+<article><dl><dt>实际支出</dt><dd>{{ offer.display_cost }}</dd><dt>适用条件</dt><dd>{{ offer.conditions }}</dd><dt>怎么参与</dt><dd>{{ offer.steps }}</dd><dt>本站停止展示入口</dt><dd>{{ offer.ends_at|date:"Y-m-d H:i" }}（北京时间）</dd></dl>
 {% if not expired %}<a class="go" href="{{ offer.official_url }}" rel="external noreferrer">前往原始参与入口 · {{ offer.official_url|cut:"https://"|truncatechars:55 }}</a>{% endif %}</article>
-<h2>我们确认了什么</h2><p>{{ offer.evidence }}</p><small>核对时间 {{ offer.checked_at|date:"Y-m-d H:i" }}（北京时间） · <a href="{{ offer.evidence_url }}">核验原文</a> · 发现来源 <a href="https://www.gamerpower.com/">GamerPower</a></small>{% endblock %}
+<h2>我们确认了什么</h2><p>{{ offer.evidence }}</p>{% if offer.channel == 'verified' %}<dl><dt>权益依据</dt><dd>{{ offer.reward_basis }}</dd><dt>费用依据</dt><dd>{{ offer.price_basis }}</dd><dt>资格依据</dt><dd>{{ offer.eligibility_basis }}</dd><dt>有效期依据</dt><dd>{{ offer.time_basis }}</dd></dl>{% endif %}<small>核对时间 {{ offer.checked_at|date:"Y-m-d H:i" }}（北京时间） · <a href="{{ offer.evidence_url }}">核验原文</a> · 发现来源 <a href="https://www.gamerpower.com/">GamerPower</a></small>{% endblock %}

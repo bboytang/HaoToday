@@ -22,7 +22,7 @@ class RevisionTests(TestCase):
         self.assertEqual(list(offer.revisions.values_list("snapshot__cost", flat=True)),
             ["实付含运费 6.01 元", "运费待核"])
         with transaction.atomic():
-            rows.update(channel="verified")
+            rows.update(channel="lead")
             transaction.set_rollback(True)
         self.assertEqual(offer.revisions.count(), 2)
         self.assertEqual(rows.get().channel, "draft")
