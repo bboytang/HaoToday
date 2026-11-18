@@ -31,3 +31,11 @@ haotoday-backup.timer 计划每天北京时间 03:15 执行，漏跑由 systemd 
 deploy/monitor.sh 与两份 haotoday-monitor unit 放在 /opt/haotoday，脚本可执行；将 unit 安装至 /etc/systemd/system 后执行 `systemctl daemon-reload && systemctl enable --now haotoday-monitor.timer && systemctl start haotoday-monitor.service`。主机需 python3、GNU find、systemd、Docker Compose。每五分钟检查三个定时器与服务结果、推送 worker 三分钟心跳、已启用 GamerPower 最近九十分钟成功批次、二十六小时内非空日备份。查看 `journalctl -u haotoday-monitor.service --since today`。失败先查对应 service 日志与只读来源报表，不自动重启或重发。若有计划地停源，预期水位告警；新增准入源需更新监控。当前仅本机 journal 告警，不能发现整机掉线或证明手机送达。移除巡检可单独执行 `systemctl disable --now haotoday-monitor.timer`，不影响业务定时器。
 
 恢复副本专用库名为 haotoday_recovery。部署 restore-drill.sh 必须同时提供同目录 quarantine-restored-push.sql。其保守策略是放弃副本中所有旧设备投递历史及积压，不重发；不删除站内消息、收藏或订阅规则。真正切换时，仍须停写、隔离、核对账号注销等备份后的变化，确认后由用户在设备页重新开启提醒。禁止为在现网运行清理语句而改动库名保护。原归档不变。验证非空积压请在本机运行 scripts/test-restore-queue.sh，不向现网造测试设备。
+
+## 录入人工公告（仅服务器操作员）
+不再为每则品牌或机构公告编写 Python 入库脚本。人工读原文后准备 UTF-8 JSON 对象，提供：external_id（同一来源公告/场次的稳定正整数，重跑不得换号）、publisher、title、category（购物/生活服务/数字权益）、cost、conditions、steps、official_url、evidence_url、evidence、checked_at、ends_at；可选 starts_at、platform、region。时间用含 +08:00 或 Z 的 ISO 格式；checked_at 填实际核对时刻，ends_at 是停止展示入口的时刻。仅提交可公开事实，不能提交凭据和用户资料。先查后台是否已有同一活动，编号幂等不能替代跨来源查重。
+从仓库外的本地公告文件运行：
+```sh
+ssh -T root@43.143.230.174 'cd /opt/haotoday && docker compose exec -T app python manage.py record_notice' < notice.json
+```
+默认事务回滚、不产生持久记录（数据库序列号可能跳号）。核对无误后在命令末尾的单引号内加 ` --save-draft`。即使传保存参数，也只存后台草稿，不推送、不计自动新增；审核人须另行核实再发布。相同编号和内容重放不覆盖，内容冲突进后台比较。不能用此命令改旧活动、直接发布或导入网络链接中的内容。
