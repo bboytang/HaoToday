@@ -4,8 +4,10 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
+from .triage import game_triage
 from .models import Observation, Offer, Run, Source
 
 URL = "https://www.gamerpower.com/api/giveaways?type=game"
@@ -39,6 +41,8 @@ def sync():
         with transaction.atomic():
             source = Source.objects.select_for_update().get(pk=source.pk)
             counts = dict(baseline=0, new=0, changed=0, unchanged=0)
+            counts["triage"] = dict(priority=0, review=0, hold=0, exclude=0)
+            counts["enriched"] = 0
             if source.enabled:
                 ids = set()
                 for row in fetch():
@@ -49,6 +53,9 @@ def sync():
                     link = urlsplit(facts["gamerpower_url"])
                     if (link.scheme, link.netloc) != ("https", "www.gamerpower.com") or facts["type"].lower() != "game":
                         raise ValueError("unexpected source link or type")
+                    assessment = game_triage(row)
+                    facts["triage"] = assessment
+                    counts["triage"][assessment["tier"]] += 1
                     ids.add(key)
                     first = source.last_success is None
                     obj, created = Observation.objects.get_or_create(source=source, external_id=key,
@@ -56,17 +63,26 @@ def sync():
                     if created:
                         counts["baseline" if first else "new"] += 1
                     elif obj.facts != facts:
-                        if any(obj.facts.get(k) != facts[k] for k in ("end_date", "platforms", "title")):
+                        previous = obj.facts.get("triage", {})
+                        rules_changed = bool(previous and previous.get("steps_sha256") != assessment["steps_sha256"])
+                        if rules_changed or assessment["tier"] in ("exclude", "hold") or any(
+                                obj.facts.get(k) != facts[k] for k in ("end_date", "platforms", "title")):
                             Offer.objects.filter(observation=obj, review_state=Offer.ReviewState.AVAILABLE,
                                 channel__in=[Offer.Channel.LEAD, Offer.Channel.VERIFIED],
                                 ends_at__gt=timezone.now()).update(review_state=Offer.ReviewState.SUSPECT,
-                                status_reason="发现来源的权益名称、期限或适用平台已变化，暂停领取指引，等待复核。")
+                                status_reason="发现来源的权益或领取条件需重新核对，暂停领取指引，等待复核。")
+                        enriched = not previous and all(obj.facts.get(k)==v for k,v in facts.items() if k!="triage")
                         obj.facts = facts
                         obj.save(update_fields=["facts", "updated"])
-                        counts["changed"] += 1
+                        counts["enriched" if enriched else "changed"] += 1
                     else:
                         counts["unchanged"] += 1
                 # 只有整批验证成功才检查消失项，网络失败绝不判定过期。
+                missing = Observation.objects.filter(source=source).exclude(external_id__in=ids).filter(
+                    Q(facts__triage__isnull=True) | ~Q(facts__triage__tier="absent"))
+                for item in missing.iterator():
+                    item.facts["triage"] = dict(item.facts.get("triage", {}),tier="absent",reason="当前完整目录未列出")
+                    item.save(update_fields=["facts", "updated"])
                 active = Offer.objects.filter(observation__source=source,
                     channel__in=[Offer.Channel.LEAD, Offer.Channel.VERIFIED],
                     review_state=Offer.ReviewState.AVAILABLE, ends_at__gt=timezone.now())

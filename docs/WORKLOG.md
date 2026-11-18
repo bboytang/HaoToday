@@ -85,3 +85,6 @@
 
 ### T04 · GLM 混合条款实测
 单次 HTTPS 读取上海文旅局原文，HTML 24,582 字节；先标五条、四字段预期，再用 scripts/evaluate_glm.py --live 在服务器既有适配器评测。首次无可评分结果；单条复诊取得 429/1305，已停止，没有换密钥或启用生产批处理。具体口径及命令见 TRUST_AND_PUSH。补充评测脚本的安全状态码诊断与 401/403/429 停批；本地替身验证 429 后第二条未请求，py_compile 通过，缺样本 HTML 被拒绝。线上五条对应缓存数 0；本轮只增加评测工具和文档，无业务部署。
+
+### T04 · 不依赖 AI 的数字权益候选初筛
+先复现 test_review_priority_not_publication：旧采集结果无 triage（KeyError），再将步骤特征判断接入原有成功批次，不另增请求、不存步骤全文。加测目录移除、付费/积分、抽奖、无须购买及步骤改变后停展。scripts/check.sh：41 项通过。开发库真实名单的后台优先筛选返回 3 条。线上 upgrade.sh haotoday-app:t04-triage-1，备份 backups/pre-upgrade-20261118T155015Z.dump，无新增迁移；运行 discovery.service 成功：enriched=14，priority=3，review=10，hold=1，exclude=0，new=0。公网详情及频道回归通过。该轮没有模型请求、没有据此认定可领或发布新活动，尚无全量精度评估。

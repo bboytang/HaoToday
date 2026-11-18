@@ -64,3 +64,37 @@ class SyncTests(TestCase):
         sync()
         offer.refresh_from_db()
         self.assertEqual(offer.review_state, "suspect")
+
+    def test_review_priority_not_publication(self, fetch):
+        fetch.return_value=[
+            dict(row(1), instructions="Add the game to your library.", end_date="2027-01-01 23:00:00"),
+            dict(row(2), instructions="Unlock your key (10 ARP required)."),
+            dict(row(3), instructions="Enter for a chance to win the game."),
+            dict(row(4), instructions="Unlock instructions unavailable"),
+        ]
+        result=sync()
+        self.assertEqual(result["triage"],{"priority":1,"review":1,"hold":1,"exclude":1})
+        from .models import Offer
+        self.assertFalse(Offer.objects.exists())
+        self.assertEqual(sync()["unchanged"],4)
+        fetch.return_value=fetch.return_value[1:]
+        sync()
+        self.assertEqual(Observation.objects.get(external_id=1).facts["triage"]["tier"],"absent")
+
+    def test_changed_claim_steps_pause_published_offer(self, fetch):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import Offer
+        fetch.return_value=[dict(row(1),instructions="Add the game to your library.")]
+        sync()
+        offer=Offer.objects.create(observation=Observation.objects.get(),channel="lead",
+            checked_at=timezone.now(),ends_at=timezone.now()+timedelta(days=1))
+        fetch.return_value[0]["instructions"]="Purchase required to get the game."
+        self.assertEqual(sync()["triage"]["hold"],1)
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")
+
+    def test_no_purchase_required_is_not_a_spend_gate(self, fetch):
+        fetch.return_value=[dict(row(1),instructions="No purchase required. Add it to your library.",
+            end_date="2027-01-01 23:00:00")]
+        self.assertEqual(sync()["triage"]["priority"],1)

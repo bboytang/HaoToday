@@ -28,9 +28,31 @@ class RunAdmin(ReadOnlyAdmin):
     list_display = ("source", "started", "status", "counts")
 
 
+class ReviewTier(admin.SimpleListFilter):
+    title = "初筛队列"
+    parameter_name = "tier"
+
+    def lookups(self, request, model_admin):
+        return (("priority","优先查原始规则"),("review","常规复核"),("hold","高门槛待查"),
+                ("exclude","疑似营销"),("absent","目录已移除"))
+
+    def queryset(self, request, queryset):
+        return queryset.filter(facts__triage__tier=self.value()) if self.value() else queryset
+
+
 @admin.register(Observation)
 class ObservationAdmin(ReadOnlyAdmin):
-    list_display = ("source", "external_id", "baseline", "updated")
+    list_display = ("source", "external_id", "candidate_title", "review_reason", "baseline", "updated")
+    list_filter = (ReviewTier, "baseline", "source")
+    ordering = ("baseline", "-updated")
+
+    @admin.display(description="候选")
+    def candidate_title(self, obj):
+        return obj.facts.get("title", "—")
+
+    @admin.display(description="初筛原因")
+    def review_reason(self, obj):
+        return obj.facts.get("triage", {}).get("reason", "未分类")
 
 
 @admin.register(Offer)
