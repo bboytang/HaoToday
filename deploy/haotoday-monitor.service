@@ -1,0 +1,9 @@
+[Unit]
+Description=Check HaoToday worker, source freshness and local archive
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/haotoday
+ExecStart=/opt/haotoday/monitor.sh
+TimeoutStartSec=90s

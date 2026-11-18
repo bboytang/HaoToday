@@ -100,3 +100,8 @@
 
 ### T06 · 在线阅读中的变化提示（2026-11-18 UTC）
 先复现无 feed_etag（KeyError），再对共享筛选/分页逻辑加版本签名。scripts/check.sh 43 项通过。一次性 PostgreSQL 和 390px Chromium 中，草稿转线索后前台 HEAD 由 304 变 200，页面内容未自行替换，点击刷新才看到该项且保留关键词；测试数据随临时库销毁。上线 t06-list-1，无迁移，备份 backups/pre-upgrade-20261118T160117Z.dump。公网 HTTPS 已验证真实页面签名返回 304、旧签名返回 200，均为 0 字节正文。没有更改生产活动以制造更新，未做大并发压测。
+
+### 2026-11-18 UTC · T08 自动任务静默停转巡检
+- 修改前服务器三项 timer 均 active；只看 timer 不能证明业务有进展。新增独立只读巡检，无数据库、应用镜像或用户消息变更。
+- 本机 `scripts/test-monitor.sh` 返回 0：健康替身通过；隔离注入停 timer、过旧心跳、水位失败和过旧归档，检查器返回非零且四项 ALERT 匹配。不是生产故障演练。
+- 服务器安装后执行 `systemctl start haotoday-monitor.service`，实际读库、检查日备份及执行时刻，返回 0、Result=success；五分钟 timer 已启用。仅写主机 journal，非站外呼叫或推送到人。

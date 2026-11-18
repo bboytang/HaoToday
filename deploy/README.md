@@ -26,3 +26,6 @@ haotoday-push.timer 每 30 秒触发有限批次，状态检查 `systemctl list-
 haotoday-backup.timer 计划每天北京时间 03:15 执行，漏跑由 systemd 补触发。归档以 UTC 日期命名；同日再次执行只校验目录，不覆盖当天版本。pg_dump 失败不会发布半个归档，0600 保存。同机日档保留约七天，仅轮转 daily-YYYYMMDD.dump，不删 pre-upgrade 归档。检查 `systemctl list-timers haotoday-backup.timer` 及 `journalctl -u haotoday-backup.service`。这是同机明文数据库归档的访问权限控制，不是加密异机容灾。
 在 /opt/haotoday 执行 `./restore-drill.sh backups/daily-YYYYMMDD.dump`（替换实际文件名）。它新建无网络、无宿主端口、数据在 256 MiB tmpfs 的 PostgreSQL 17，单事务整库恢复，检查版本、活动版本记录和投递触发器，仅输出计数后销毁演练容器。仅接受本项目可信归档；不运行其中的应用、邮件或推送进程。若数据增长导致临时空间不足，先在独立演练主机重新核算容量，不在生产卷“试恢复”。
 真正故障切换仍须人工决策：停本站采集和投递及其 timer，暂停账号写入；恢复到新隔离环境，校验业务与迁移，再核对备份时间之后的账号注销、撤权和投递记录。无法确认设备授权或已发状态时，保持投递关闭，禁止盲目重播。保留故障现场和可回切的数据卷。此脚本不会切换站点，不会迁移私有 .env/VAPID、TLS 或邮件凭据；加密异机备份、密钥独立保管、故障切换和告警尚待验收。
+
+## 内测巡检
+deploy/monitor.sh 与两份 haotoday-monitor unit 放在 /opt/haotoday，脚本可执行；将 unit 安装至 /etc/systemd/system 后执行 `systemctl daemon-reload && systemctl enable --now haotoday-monitor.timer && systemctl start haotoday-monitor.service`。主机需 python3、GNU find、systemd、Docker Compose。每五分钟检查三个定时器与服务结果、推送 worker 三分钟心跳、已启用 GamerPower 最近九十分钟成功批次、二十六小时内非空日备份。查看 `journalctl -u haotoday-monitor.service --since today`。失败先查对应 service 日志与只读来源报表，不自动重启或重发。若有计划地停源，预期水位告警；新增准入源需更新监控。当前仅本机 journal 告警，不能发现整机掉线或证明手机送达。移除巡检可单独执行 `systemctl disable --now haotoday-monitor.timer`，不影响业务定时器。

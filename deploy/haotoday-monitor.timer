@@ -1,0 +1,10 @@
+[Unit]
+Description=Check HaoToday operational health every five minutes
+
+[Timer]
+OnActiveSec=1min
+OnUnitInactiveSec=5min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
