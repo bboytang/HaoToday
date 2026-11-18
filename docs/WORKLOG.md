@@ -91,3 +91,6 @@
 
 ### T04 · 第一条按官方免费入口范围验证的权益
 核对 GamerPower 3830 / 3852 的跳转目标，人工打开各官方页面。itch.io 活动 HTML SHA256 5d0b2d3d254fdf5839b87e2a238c1cfb248a93819aa349c012b4c1c7aff6cf1e。Playwright 未登录检查：活动倒计时 3 天 7 小时 8 分，点 Get the Bundle 看见可跳过付款；到此为止，没有代领、下单或下载。Epic 商品页 HTTP 403，另一候选未发布。用已有 Observation 发布内测站 #3，费用与资格证据分字段保存；开发库重复导入不覆盖，生产一次写入。经公网确认首页精选、零支出筛选、详情的出处/时间/核验边界以及线索频道隔离。只更内容与交接，无镜像升级。本次未产生自动新增或实际手机收件证据。
+
+### T08 · 真实归档隔离恢复
+服务器原先只有升级前归档，未发现本项目每日备份 timer。新增 daily-backup.sh、systemd 单元及 restore-drill.sh；bash -n 和 systemd-analyze verify 检查通过（宿主其他服务有既有 PIDFile 提示，未修改）。本地损坏输入非零退出并清理演练容器。服务器先检查资源与空余空间，启动 haotoday-backup.service，生成 /opt/haotoday/backups/daily-20261118.dump（0600，98,360 字节，SHA256 d3f9ce525e284cd9a843045b7e88b88f51d710c4e7f7d3afa5ad3b3d85a546fe）。同日重跑摘要未变。无网络临时 PostgreSQL 17 全量恢复约 2 秒，来源 2、活动 3（已验证 1）、待投递 0；迁移和触发器校验通过，容器已销毁，生产活动数仍为 3。timer 已启用，下一次 11-19 03:15 北京时间。无公众放行、无应用升级；2 秒仅指此次小库演练，并非灾难切换 RTO。

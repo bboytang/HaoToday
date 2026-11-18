@@ -1,0 +1,9 @@
+[Unit]
+Description=Create a local HaoToday PostgreSQL archive
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/haotoday
+ExecStart=/opt/haotoday/daily-backup.sh
+TimeoutStartSec=10min
