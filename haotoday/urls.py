@@ -15,7 +15,11 @@ def health(request):
     return JsonResponse({"status": "ok"})
 
 
+from discovery import views
+
 urlpatterns = [
+    path("", views.feed, name="feed"),
+    path("offers/<int:pk>/", views.detail, name="offer"),
     path("admin/", admin.site.urls),
     path("health/", health),
 ]
