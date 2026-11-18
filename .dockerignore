@@ -1,0 +1,8 @@
+**
+!requirements.txt
+!manage.py
+!haotoday/
+!haotoday/**
+!discovery/
+!discovery/**
+**/__pycache__

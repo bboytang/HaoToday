@@ -17,3 +17,9 @@
 - 增加 Offer、审核后台、双频道列表和详情。默认草稿；不展示内部观察原文；过期移出列表并去掉领取按钮。T04 将补充字段级证据和业务版本管理。
 - 实际数据库迁移 discovery.0002_offer 成功。按 GamerPower 观察 3850 定位 Epic PC 本体，直接 curl 免费目录返回 403，未重试受限抓取。借官方公开商品页 https://store.epicgames.com/p/knightica-3be45c?lang=en-US 核对本体、免费标注和截止 11/19 16:00 UTC。中国大陆结算未实测，仅作为抢先线索，本机 Offer #1；非自动新增、非已验证。
 - scripts/check.sh 退出 0（8 项测试，无迁移差异）；本机持久库通过 Django Client 请求 /?channel=lead、/offers/1/ 均为 200。这不是公网或手机测试。
+
+## 2026-11-18 UTC｜T03 HTTPS 邀请内测
+- 复查 git status、交接、DNS、SSH 主机记录、服务器监听及可用资源。部署前仅有 SSH；复用了现有 Caddy 2 和已核对镜像 ID 的 PostgreSQL 17。建立独立 Compose 项目 haotoday，数据库未发布宿主端口，预览凭据仅存服务器。
+- 本机 docker build、docker save/load 部署。首次低权限迁移因源码权限 0700 被拒；检查镜像文件权限后仅放宽镜像内应用文件读取权限，重新构建 t03-2。迁移成功，应用进程 UID=10001，Gunicorn 运行。Caddy 成功获取受信任证书。
+- 服务器 sync_gamerpower 真实返回 baseline=14/new=0。按 source=gamerpower 与 external_id=3850 关联已有审核结论，full_clean 和期限检查后写入 Offer #1 lead，不覆盖其他数据。
+- 公网 HTTP 跳转 308，HTTPS 未认证 401；一次 netrc 输入探测未正常认证，改用 curl 配置传入凭据后，首页、线索列表、详情均返回 200，列表与详情都含 Knightica，TLS verify=0。认证访问 /admin/ 返回 404。scripts/check.sh 退出 0（8 测试）。真机待用户验证，尚无推送或公开注册。

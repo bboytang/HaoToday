@@ -1,0 +1,9 @@
+8kraw.cloud {
+    basic_auth {
+        preview {$PREVIEW_HASH}
+    }
+    @internal path /admin* /health*
+    respond @internal 404
+    header X-Robots-Tag "noindex, nofollow"
+    reverse_proxy app:8000
+}

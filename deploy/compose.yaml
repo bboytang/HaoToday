@@ -1,0 +1,45 @@
+name: haotoday
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: haotoday
+      POSTGRES_USER: haotoday
+      POSTGRES_PASSWORD: ${PGPASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "haotoday", "-d", "haotoday"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  app:
+    image: ${APP_IMAGE:?}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
+      DJANGO_ALLOWED_HOSTS: 8kraw.cloud
+      PGHOST: db
+      PGDATABASE: haotoday
+      PGUSER: haotoday
+      PGPASSWORD: ${PGPASSWORD:?}
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PREVIEW_HASH: ${PREVIEW_HASH:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - caddyconfig:/config
+    ports:
+      - "80:80"
+      - "443:443"
+volumes:
+  pgdata:
+  certificates:
+  caddyconfig:
