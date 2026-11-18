@@ -220,3 +220,7 @@ class PushDelivery(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["device", "message"], name="one_device_delivery_per_message")]
+
+class StartWake(models.Model):
+    """仅预先发布、等待时间跨过开始点的活动。"""
+    offer = models.OneToOneField(Offer, primary_key=True, on_delete=models.CASCADE)

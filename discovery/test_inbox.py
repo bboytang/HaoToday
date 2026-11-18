@@ -140,3 +140,47 @@ class InboxTests(TestCase):
         self.client.force_login(self.user)
         self.client.post(f"/devices/{d.pk}/action/",{"action":"normal"})
         self.assertLess(PushDelivery.objects.get().next_at,later)
+
+    def test_scheduled_start_wakes_once_without_new_revision(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
+        from .models import PushDevice, PushDelivery
+        PushDevice.objects.create(user=self.user,endpoint_hash="fixture",sealed=b"test")
+        start = timezone.now()+timedelta(minutes=5)
+        self.change(channel="verified", starts_at=start)
+        self.change(title="PC 预告更新")
+        revision=self.offer.revisions.first()
+        # 通过启动命令驱动；不需要为已到点的活动再改一次标题。
+        for now in (start-timedelta(seconds=1),start,start+timedelta(seconds=1)):
+            with patch("django.utils.timezone.now",return_value=now), patch(
+                    "discovery.management.commands.dispatch_push.dispatch_one",return_value=False):
+                call_command("dispatch_push",stdout=StringIO())
+            self.assertEqual(InboxMessage.objects.count(),int(now>=start))
+        self.assertEqual(InboxMessage.objects.get().revision,revision)
+        self.assertEqual(self.offer.revisions.first(),revision)
+        self.assertEqual(PushDelivery.objects.count(),1)
+
+    def test_scheduled_cancel_reschedule_expire_and_unsubscribe(self):
+        from unittest.mock import patch
+        from .models import StartWake
+        from .starts import open_one
+        start = timezone.now()+timedelta(minutes=5)
+        self.change(channel="verified", starts_at=start)
+        self.change(review_state="withdrawn",status_reason="取消")
+        with patch("django.utils.timezone.now",return_value=start):
+            self.assertFalse(open_one())
+        later = start+timedelta(minutes=20)
+        self.change(review_state="available",starts_at=later)
+        with patch("django.utils.timezone.now",return_value=start):
+            self.assertFalse(open_one())
+        Subscription.objects.filter(user=self.user).delete()
+        with patch("django.utils.timezone.now",return_value=later):
+            self.assertTrue(open_one())
+        self.assertFalse(InboxMessage.objects.exists())
+        Subscription.objects.create(user=self.user, keyword="pc")
+        self.change(starts_at=later+timedelta(hours=1), ends_at=later+timedelta(hours=2))
+        with patch("django.utils.timezone.now",return_value=later+timedelta(hours=2)):
+            self.assertTrue(open_one())
+        self.assertFalse(StartWake.objects.exists())
+        self.assertFalse(InboxMessage.objects.exists())

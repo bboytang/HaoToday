@@ -19,3 +19,5 @@
 内测者先确认邮箱归属，在服务器用 `/opt/haotoday/create-tester.sh` 创建自己的**普通账号**（需交互终端、不发邮件、不覆盖同名账号）。与外层 preview 口令独立。进入 /devices/，iPhone 先添加到主屏幕，从图标启动；点“在本机开启提醒”，再点该设备的测试按钮。测试请求受理与通知栏可见是不同证据。
 服务器专有 HAOTODAY_VAPID_KEY 是 P-256 原始私钥的 base64url 编码，保存在私有 .env，不能传到浏览器或提交。不要随意轮换 VAPID 与 DJANGO_SECRET_KEY，否则须重新订阅或迁移加密材料。devices 表仅保存摘要和加密的端点/密钥。支持列表：Apple web.push.apple.com、Chrome fcm.googleapis.com、Mozilla updates.push.services.mozilla.com；不支持的服务仍可用站内消息。
 haotoday-push.timer 每 30 秒触发有限批次，状态检查 `systemctl list-timers --all haotoday-push.timer`，停外推用 `systemctl disable --now haotoday-push.timer` 并确认已运行的 service 结束。设备关闭将清除该设备和对应投递日志；站内消息保留。accepted 不代表人已看到；测试时另记录设备、网络、时刻及实际可见性。收到提醒只打开本站固定路径。
+
+迁移 0013 起，dispatch_push 每次先处理最多 20 个到点预告，再处理最多 20 条设备投递。日志 opened 为处理的预告数（不等于有匹配用户），processed 为处理的投递数（不等于送达）。停该定时器也会暂停预告唤醒；恢复后已过期项目不发送。应用回退 t06-quiet-2 时可保留兼容的 0013；旧 worker 不消费预告。

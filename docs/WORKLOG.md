@@ -79,3 +79,6 @@
 
 ### T06 · 免打扰与过时价格
 先以 test_quiet_queue_only_sends_current_price 复现：三个过夜价格版本原先全部 pending。修复后合并已被替代的外推，发送前复算降价记录；退避时间不再每五分钟重复写夜间队列。补测上海与 UTC 同时段的不同投递、07:59:59/08:00 边界、短于等待期的活动和关闭免打扰。scripts/check.sh 36 项通过（PostgreSQL 真库、设备网络模拟）。线上 upgrade.sh haotoday-app:t06-quiet-2 成功，无迁移，备份 backups/pre-upgrade-20261118T154057Z.dump；systemd worker Result=success / processed=0，公网登录和设备页 PWA 资源回归通过。未发生产测试通知。
+
+### T06 · 预定活动到点通知
+单测先复现：预先发布后若没有新的人工编辑，开抢时仍为 0 条消息。迁移 0013 新增每活动一条的待唤醒记录；开抢和即时发布共享数据库订阅匹配逻辑。开发库顺序执行 migrate → migrate discovery 0012 → migrate 均成功；一次性 PostgreSQL 的 scripts/check.sh 共 38 项通过。另在开发库事务内模拟预告、用真实时钟等待 1.1 秒，消息从 0 到 1，重复轮询不新增；演练已回滚。覆盖改期、变更版本、撤回、取消订阅及过期。上线 upgrade.sh haotoday-app:t06-start-1 成功，备份 backups/pre-upgrade-20261118T154404Z.dump；worker 正常退出 opened=0 processed=0，公网既有详情/频道复查通过。未用模拟活动触发生产通知。
