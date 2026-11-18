@@ -1,0 +1,8 @@
+{% extends "discovery/base.html" %}
+{% block title %}站内消息 · HaoToday{% endblock %}
+{% block body %}<p>我的 / 消息中心</p><h1>站内消息</h1><p>按你的订阅记录发布提醒。参与前请打开详情查看最新状态。</p>
+{% for m in items %}<article><small>{{ m.get_kind_display }} · {% if m.read_at %}已读{% else %}未读{% endif %} · {{ m.revision.recorded_at|date:"m-d H:i" }}</small>
+{% if m.revision.offer.channel == 'draft' %}<h2>这条活动已停止公开展示</h2>{% else %}<h2><a href="{% url 'offer' m.revision.offer_id %}">{{ m.revision.offer.title }}</a></h2>
+{% if m.kind == 'correction' %}<p>{{ m.revision.snapshot.status_reason }}</p>{% endif %}{% endif %}
+{% if not m.read_at %}<form method="post" action="{% url 'read-message' m.pk %}">{% csrf_token %}<button>标为已读</button></form>{% endif %}</article>{% empty %}<article><h2>还没有提醒</h2><p>先 <a href="{% url 'subscriptions' %}">设置订阅</a>，匹配的新活动发布后会出现在这里。</p></article>{% endfor %}
+{% if items.has_previous %}<a href="?page={{ items.previous_page_number }}">上一页</a>{% endif %}{% if items.has_next %}<a href="?page={{ items.next_page_number }}">下一页</a>{% endif %}{% endblock %}

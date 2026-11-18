@@ -181,3 +181,20 @@ class AccountRateWindow(models.Model):
     key = models.CharField(max_length=64, primary_key=True)
     count = models.PositiveIntegerField(default=0)
     expires_at = models.DateTimeField(db_index=True)
+
+
+class InboxMessage(models.Model):
+    class Kind(models.TextChoices):
+        PUBLISHED = "published", "新情报"
+        PRICE_DROP = "price_drop", "实付降价"
+        CORRECTION = "correction", "更正提醒"
+
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    revision = models.ForeignKey(OfferRevision, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=12, choices=Kind)
+    total_fen = models.PositiveBigIntegerField(null=True)
+    read_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "revision"], name="one_inbox_per_user_revision")]
+        indexes = [models.Index(fields=["user", "-id"], name="inbox_user_recent")]

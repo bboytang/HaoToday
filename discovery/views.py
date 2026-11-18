@@ -117,3 +117,21 @@ def subscriptions(request):
 def unsubscribe(request, pk):
     get_object_or_404(Subscription, pk=pk, user=request.user).delete()
     return redirect("subscriptions")
+
+
+@login_required
+@require_safe
+def inbox(request):
+    from .models import InboxMessage
+    items = InboxMessage.objects.filter(user=request.user).select_related("revision__offer").order_by("-pk")
+    page = Paginator(items, 24).get_page(request.GET.get("page"))
+    return render(request, "discovery/inbox.html", {"items": page})
+
+
+@login_required
+@require_POST
+def read_message(request, pk):
+    from .models import InboxMessage
+    item = get_object_or_404(InboxMessage, pk=pk, user=request.user)
+    InboxMessage.objects.filter(pk=item.pk, read_at__isnull=True).update(read_at=timezone.now())
+    return redirect("inbox")
