@@ -1,0 +1,1 @@
+{% if offer.observation.source.key == "gamerpower" %}<a href="https://www.gamerpower.com/">GamerPower</a>{% elif offer.observation.source.key == "manual-official" %}<a href="{{ offer.evidence_url }}">人工核对公告</a>{% else %}<a href="{{ offer.evidence_url }}">来源依据</a>{% endif %}

@@ -30,6 +30,17 @@ class PublicTests(TestCase):
         self.assertContains(detail, "https://www.gamerpower.com/")
         self.assertNotContains(detail, "内部测试原文")
 
+    def test_manual_official_notice_not_attributed_to_game_directory(self):
+        Source.objects.update(key="manual-official")
+        self.offer.channel = "lead"
+        self.offer.evidence_url = "https://example.org/notice"
+        self.offer.save()
+        for path in (self.url, "/?channel=lead"):
+            page = self.client.get(path)
+            self.assertContains(page, "人工核对公告")
+            self.assertContains(page, self.offer.evidence_url)
+            self.assertNotContains(page, "GamerPower")
+
     def prepare_verified(self):
         for field in ("conditions", "evidence", "steps", "reward_basis", "price_basis", "eligibility_basis", "time_basis"):
             setattr(self.offer, field, "已核对测试条款")

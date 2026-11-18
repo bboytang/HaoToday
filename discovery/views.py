@@ -32,7 +32,7 @@ def feed(request):
     for field in selected:
         values = active.exclude(**{field: ""}).order_by(field).values_list(field, flat=True).distinct()
         choices[field] = sorted(set(values) | ({selected[field]} if selected[field] else set()))
-    page = Paginator(offers.order_by("-checked_at", "-id"), 24).get_page(request.GET.get("page"))
+    page = Paginator(offers.select_related("observation__source").order_by("-checked_at", "-id"), 24).get_page(request.GET.get("page"))
     return render(request, "discovery/feed.html", {
         "offers": page, "channel": channel, "q": q, "selected": selected, "choices": choices,
         "zero": zero, "filtered": bool(q or any(selected.values()) or zero),
@@ -41,7 +41,7 @@ def feed(request):
 
 @require_safe
 def detail(request, pk):
-    offer = get_object_or_404(Offer.objects.exclude(channel=Offer.Channel.DRAFT), pk=pk)
+    offer = get_object_or_404(Offer.objects.select_related("observation__source").exclude(channel=Offer.Channel.DRAFT), pk=pk)
     now = timezone.now()
     if offer.review_state != Offer.ReviewState.AVAILABLE:
         status, reason = offer.get_review_state_display(), offer.status_reason

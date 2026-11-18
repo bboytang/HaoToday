@@ -70,3 +70,6 @@
 
 ### T07 · 首个真实非 API 文件样本
 从康文署官方固定 HTTPS 下载节目 XML（200，1,835,803 字节，SHA256 2b7de84863ba1b1b834828438502cc2a310f7584f62fd840395832f39d4a005b）。运行 scripts/inspect_lcsd.py 退出 0：四类计数合计 1,064，4 个无效输入均被拒绝。复核免费标签与地区、年龄、报名状态的差异，见来源卡。未写生产库或启动采集，不计作新羊毛。仅离线工具和文档改动。
+
+### T07 · 首条内地生活线索上线
+人工核对陇南公告、区分免费与半价景区，独立整理为线索 #2。先用 test_manual_official_notice_not_attributed_to_game_directory 复现所有详情错误署名 GamerPower（1 failed）；改列表/详情共用按来源渲染的片段，scripts/check.sh（32 passed）。开发库重复导入同一公告条目，created=True/False、同一 offer_id。线上 upgrade.sh haotoday-app:t07-notice-1 退出 0，库迁移仍是 0012，备份 backups/pre-upgrade-20261118T153516Z.dump。发布后公网实测生活筛选、详情来源和资格边界、已验证频道隔离及原有数字权益署名，均通过。线上只读报告人工 1、自动新增 0。未测试现场办理，无自动采集许可。
