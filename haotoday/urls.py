@@ -16,7 +16,7 @@ def health(request):
     return JsonResponse({"status": "ok"})
 
 
-from discovery import views
+from discovery import accounts, views
 
 urlpatterns = [
     path("", views.feed, name="feed"),
@@ -25,7 +25,17 @@ urlpatterns = [
     path("subscriptions/", views.subscriptions, name="subscriptions"),
     path("subscriptions/<int:pk>/remove/", views.unsubscribe, name="unsubscribe"),
     path("offers/<int:pk>/feedback/", views.feedback, name="feedback"),
-    path("account/login/", auth_views.LoginView.as_view(template_name="discovery/login.html"), name="login"),
+    path("account/login/", accounts.AccountLogin.as_view(), name="login"),
+    path("account/signup/", accounts.signup, name="signup"),
+    path("account/activate/<slug:token>/", accounts.activate, name="activate"),
+    path("account/delete/", accounts.delete_account, name="delete-account"),
+    path("account/reset/", accounts.AccountReset.as_view(), name="password_reset"),
+    path("account/reset/sent/", auth_views.PasswordResetDoneView.as_view(template_name="discovery/mail_form.html",
+        extra_context={"title":"请检查邮箱", "note":"如果邮箱关联有效账号，将收到重置链接。"}), name="password_reset_done"),
+    path("account/new-password/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(
+        template_name="discovery/mail_form.html", extra_context={"title":"设置新密码"}), name="password_reset_confirm"),
+    path("account/reset/complete/", auth_views.PasswordResetCompleteView.as_view(template_name="discovery/mail_form.html",
+        extra_context={"title":"密码已更新"}), name="password_reset_complete"),
     path("account/logout/", auth_views.LogoutView.as_view(next_page="feed"), name="logout"),
     path("offers/<int:pk>/favorite/", views.favorite, name="favorite"),
     path("admin/", admin.site.urls),

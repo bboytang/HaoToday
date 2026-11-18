@@ -1,0 +1,2 @@
+如需重置你的 HaoToday 密码，请在 30 分钟内打开以下链接。若非本人操作，可忽略此邮件。
+https://8kraw.cloud{% url 'password_reset_confirm' uidb64=uid token=token %}

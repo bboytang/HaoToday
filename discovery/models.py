@@ -169,3 +169,15 @@ class Subscription(models.Model):
             offers = offers.filter(models.Q(title__icontains=self.keyword) | models.Q(conditions__icontains=self.keyword)
                                    | models.Q(platform__icontains=self.keyword))
         return offers
+
+
+class SignupTicket(models.Model):
+    email = models.EmailField(max_length=150, unique=True)
+    digest = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+
+
+class AccountRateWindow(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    count = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(db_index=True)

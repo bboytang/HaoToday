@@ -1,0 +1,2 @@
+{% extends "discovery/base.html" %}
+{% block body %}<h1>注销个人账号</h1><p>账号、收藏、订阅及反馈将从当前数据库删除，此操作不可撤销。历史备份按备份周期处理。</p>{% if error %}<p role="alert">{{ error }}</p>{% endif %}<form method="post">{% csrf_token %}<label>输入当前密码确认 <input name="password" type="password" required autocomplete="current-password"></label><button>永久注销账号</button></form>{% endblock %}

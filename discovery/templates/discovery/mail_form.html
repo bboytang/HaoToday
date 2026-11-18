@@ -1,0 +1,2 @@
+{% extends "discovery/base.html" %}
+{% block body %}<h1>{{ title }}</h1><p>{{ note }}</p>{% if form %}<form method="post">{% csrf_token %}{{ form.as_p }}<button>确认</button></form>{% elif validlink == False %}<p>链接无效或已过期。</p>{% endif %}<p><a href="{% url 'login' %}">返回登录</a></p>{% endblock %}
