@@ -76,6 +76,7 @@ class PublicTests(TestCase):
         from django.db import IntegrityError, transaction
         self.prepare_verified()
         self.offer.category="购物"
+        self.offer.no_asset_exchange=True
         self.offer.payable_fen=0
         self.offer.shipping_fen=0
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -93,6 +94,19 @@ class PublicTests(TestCase):
         self.offer.payable_fen=0
         self.offer.save()
         self.assertContains(self.client.get("/feed/?zero=1"),self.offer.title)
+
+    def test_trade_in_is_not_free_merely_because_no_cash_changes_hands(self):
+        from django.db import IntegrityError, transaction
+        self.prepare_verified()
+        self.offer.category="购物"
+        self.offer.conditions="须交付三本符合条件的旧书才能换一本"
+        self.offer.required_purchase_fen=self.offer.payable_fen=self.offer.shipping_fen=0
+        self.offer.channel="lead"
+        self.offer.save()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Offer.objects.filter(pk=self.offer.pk).update(channel="verified")
+        self.assertContains(self.client.get("/feed/?channel=lead"),self.offer.title)
+        self.assertNotContains(self.client.get("/feed/?zero=1"),self.offer.title)
 
     def test_expired_not_actionable(self):
         self.prepare_verified()

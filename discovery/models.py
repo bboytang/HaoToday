@@ -65,6 +65,8 @@ class Offer(models.Model):
     payable_fen = models.PositiveIntegerField("商品或服务实付（分，不含运费及另购会员）", null=True, blank=True)
     required_purchase_fen = models.PositiveIntegerField("购物领取所需另购商品的最低新增实付（分，已计入商品实付）",
         null=True, blank=True, help_text="购物已验证必填。无须另购填 0；券前满额不等于实付，未知请保持线索。")
+    no_asset_exchange = models.BooleanField("购物：已核对无需交付旧物或消耗已有资产", default=False, db_default=False,
+        help_text="查看原文和价格依据；必须用旧物、积分、储值余额或已付费券兑换的，先保留线索。可免费当场领取的普通折扣券不在此列。")
     shipping_fen = models.PositiveIntegerField("运费或配送费（分）", null=True, blank=True)
     membership_fen = models.PositiveIntegerField("必须新增会员费（分）", null=True, blank=True)
     reward_basis = models.TextField("权益证据（核验原文要点）", blank=True)
@@ -77,6 +79,10 @@ class Offer(models.Model):
             name="status_requires_public_reason",
             condition=models.Q(review_state="available") | (
                 models.Q(review_state__in=["suspect", "withdrawn"]) & models.Q(status_reason__regex=r"\S")),
+        ), models.CheckConstraint(
+            name="verified_shopping_without_asset_exchange",
+            condition=~models.Q(channel="verified", category="购物") | models.Q(no_asset_exchange=True),
+            violation_error_message="现阶段无法计价旧物或已持有的积分、储值等资产；购物已验证须确认无需消耗这些资产。",
         ), models.CheckConstraint(
             name="verified_shopping_requires_purchase_floor",
             condition=~models.Q(channel="verified",category="购物") | models.Q(
