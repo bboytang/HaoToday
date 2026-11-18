@@ -73,3 +73,70 @@ class InboxTests(TestCase):
             network.assert_not_called()
         job.refresh_from_db()
         self.assertEqual(job.state,"cancelled")
+
+    def test_quiet_queue_only_sends_current_price(self):
+        from datetime import timezone as tz
+        from unittest.mock import patch
+        from .models import PushDevice, PushDelivery
+        from .push import cipher, dispatch_one
+        # 上海 21:59 发出的三次更新，在 22:00 首次被 worker 处理。
+        night = timezone.now().astimezone(tz.utc).replace(hour=14,minute=0,second=0,microsecond=0)
+        wake = night + timedelta(hours=10)
+        PushDevice.objects.create(user=self.user,endpoint_hash="test",quiet=True,
+            timezone="Asia/Shanghai",sealed=cipher().encrypt(b"{}"))
+        self.change(channel="verified",ends_at=wake+timedelta(hours=3))
+        self.change(payable_fen=800)
+        self.change(payable_fen=0)
+        PushDelivery.objects.update(created_at=night-timedelta(minutes=1),next_at=night)
+        with patch("discovery.push.timezone.now",return_value=night), patch("discovery.push.transmit") as network:
+            while dispatch_one(): pass
+            network.assert_not_called()
+        qs=PushDelivery.objects.order_by("id")
+        self.assertEqual(list(qs.values_list("state",flat=True)),["cancelled","cancelled","pending"])
+        self.assertEqual(qs.last().next_at,wake)
+        # 早晨网络恢复前，免费已经变成收费；不能把昨晚的降价当成当前价格发送。
+        self.change(payable_fen=900)
+        with patch("discovery.push.timezone.now",return_value=wake), patch("discovery.push.transmit") as network:
+            self.assertTrue(dispatch_one())
+            network.assert_not_called()
+        self.assertEqual(qs.last().state,"cancelled")
+
+    def test_device_timezone_wake_or_expire_without_network(self):
+        from datetime import timezone as tz
+        from unittest.mock import patch
+        from .models import PushDevice, PushDelivery
+        from .push import cipher, dispatch_one
+        night = (timezone.now()+timedelta(days=1)).astimezone(tz.utc).replace(hour=14,minute=0,second=0,microsecond=0)
+        wake = night+timedelta(hours=10)
+        for zone in ("Asia/Shanghai","UTC"):
+            PushDevice.objects.create(user=self.user,endpoint_hash=zone,quiet=True,
+                timezone=zone,sealed=cipher().encrypt(b"{}"))
+        self.change(channel="verified",ends_at=wake+timedelta(minutes=1))
+        PushDelivery.objects.update(created_at=night,next_at=night)
+        with patch("discovery.push.key",return_value=True), patch("discovery.push.transmit",return_value=201) as net:
+            with patch("discovery.push.timezone.now",return_value=night):
+                while dispatch_one(): pass
+            self.assertEqual(net.call_count,1)  # UTC 14:00 的设备正常发送。
+            with patch("discovery.push.timezone.now",return_value=wake-timedelta(seconds=1)):
+                self.assertFalse(dispatch_one())
+            with patch("discovery.push.timezone.now",return_value=wake):
+                self.assertTrue(dispatch_one())
+            self.assertEqual(net.call_count,2)
+            self.assertEqual(net.call_args.args[-1],60)
+            self.change(payable_fen=0)
+            PushDelivery.objects.update(created_at=night,next_at=night)
+            self.change(ends_at=wake)
+            with patch("discovery.push.timezone.now",return_value=night):
+                while dispatch_one(): pass
+            self.assertEqual(net.call_count,3)
+            self.assertEqual(PushDelivery.objects.get(device__timezone="Asia/Shanghai",message__kind="price_drop").state,"cancelled")
+
+    def test_turning_off_quiet_wakes_waiting_job(self):
+        from .models import PushDevice, PushDelivery
+        d=PushDevice.objects.create(user=self.user,endpoint_hash="quiet",quiet=True,sealed=b"test")
+        self.change(channel="verified")
+        later=timezone.now()+timedelta(hours=3)
+        PushDelivery.objects.update(next_at=later)
+        self.client.force_login(self.user)
+        self.client.post(f"/devices/{d.pk}/action/",{"action":"normal"})
+        self.assertLess(PushDelivery.objects.get().next_at,later)

@@ -76,3 +76,6 @@
 
 ### T03 · 首页和情报列表分离
 先用 test_home_separates_verified_picks_from_lead_count 验证旧首页无法显示待核实条数（1 failed）。独立首页选最近核对且仍有效的至多三条已验证情报，线索只显示有效数量及独立入口；新 /feed/ 承载筛选，旧参数网址保持可用。移动端四入口底栏，桌面顶栏。scripts/check.sh 在一次性 PostgreSQL 上 33 项通过。镜像 haotoday-app:t03-home-1 上线，无新增迁移；升级前备份 backups/pre-upgrade-20261118T153805Z.dump。用 Playwright Chromium 经公网 HTTPS 在 360×740 和 1280×800 各完成首页→线索→陇南详情→首页，两档首页无横向溢出，导航位置符合预期。不代表 iPhone/Android 真机验收。
+
+### T06 · 免打扰与过时价格
+先以 test_quiet_queue_only_sends_current_price 复现：三个过夜价格版本原先全部 pending。修复后合并已被替代的外推，发送前复算降价记录；退避时间不再每五分钟重复写夜间队列。补测上海与 UTC 同时段的不同投递、07:59:59/08:00 边界、短于等待期的活动和关闭免打扰。scripts/check.sh 36 项通过（PostgreSQL 真库、设备网络模拟）。线上 upgrade.sh haotoday-app:t06-quiet-2 成功，无迁移，备份 backups/pre-upgrade-20261118T154057Z.dump；systemd worker Result=success / processed=0，公网登录和设备页 PWA 资源回归通过。未发生产测试通知。

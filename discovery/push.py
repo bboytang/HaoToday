@@ -3,7 +3,7 @@ import base64
 import json
 import os
 import re
-from datetime import timedelta
+from datetime import timedelta, timezone as utc
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
@@ -18,7 +18,7 @@ from django.utils.crypto import salted_hmac
 from py_vapid import Vapid
 from pywebpush import WebPushException, webpush
 
-from .models import Offer, PushDelivery, Subscription
+from .models import InboxMessage, Offer, PushDelivery, Subscription
 
 
 def key():
@@ -100,10 +100,25 @@ def dispatch_one():
                     bool(offer.starts_at and offer.starts_at>now) or not any(
                     rule.matching(Offer.objects.filter(pk=offer.pk)).exists()
                     for rule in Subscription.objects.filter(user_id=device.user_id)))
-            if not cancel and device.quiet and now.astimezone(ZoneInfo(device.timezone)).hour in (22,23,0,1,2,3,4,5,6,7):
-                job.next_at=now+timedelta(minutes=5)
-                job.save(update_fields=["next_at"])
-                return True
+                # 站内保留全部历史；锁屏不重播同一用户已经被新消息替代的旧版本。
+                cancel |= InboxMessage.objects.filter(user_id=device.user_id,
+                    revision__offer_id=offer.pk, id__gt=msg.pk).exists()
+                if msg.kind == "price_drop":
+                    cancel |= (offer.channel != "verified" or
+                        offer.payable_fen + offer.shipping_fen + offer.membership_fen > msg.total_fen)
+            if not cancel and device.quiet:
+                local = now.astimezone(ZoneInfo(device.timezone))
+                if local.hour >= 22 or local.hour < 8:
+                    wake = (local + timedelta(days=int(local.hour >= 22))).replace(
+                        hour=8, minute=0, second=0, microsecond=0).astimezone(utc.utc)
+                    deadline = job.created_at + timedelta(hours=12)
+                    if msg.kind != "correction":
+                        deadline = min(deadline, offer.ends_at)
+                    if wake < deadline:
+                        job.next_at = wake
+                        job.save(update_fields=["next_at"])
+                        return True
+                    cancel = True
         if cancel:
             job.state="cancelled"
         elif not key():

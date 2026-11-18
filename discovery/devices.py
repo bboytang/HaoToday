@@ -70,8 +70,13 @@ def action(request,pk):
         if mode=="remove":
             item.delete()
         elif mode in ("quiet","normal"):
+            was_quiet=item.quiet
             item.quiet=mode=="quiet"
             item.save(update_fields=["quiet"])
+            if was_quiet and not item.quiet:
+                now = timezone.now()
+                PushDelivery.objects.filter(device=item, state="pending", attempts=0,
+                    message__isnull=False, next_at__gt=now).update(next_at=now)
         elif mode=="test" and item.sealed:
             if not PushDelivery.objects.filter(device=item,message=None,
                     created_at__gte=timezone.now()-timedelta(minutes=1)).exists():
