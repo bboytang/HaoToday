@@ -129,3 +129,6 @@
 ### 2026-11-18 UTC · T04 介绍中才出现的领取限制
 对已准入的 GamerPower 目录单次取样（响应 SHA256 9dd5eaa4510e513dc402e383a6a8fe2fa3a266aedab1b790959a2f89a6599037）：3716 的介绍明确有积分条件，原逻辑只检查步骤。现在两处均查，介绍指纹变化也能令公开项进入复查。回归覆盖旧摘要补录、不敏感空白、仅描述含消费门槛，以及初筛等级不变但地区规则变动。scripts/check.sh 46 项通过；替换步骤的实验不作为真实新增证据。
 部署 t04-desc-1，升级前备份 pre-upgrade-20261118T161743Z.dump，无迁移。触发 haotoday-discovery.service 真实完整批次：14 enriched、0 new、0 changed、0 missing_for_review；3 优先、10 常规、1 暂缓。公网 #3 详情及频道隔离复测通过，未新增发布或提高质量指标。
+
+### 2026-11-18 UTC · T07 先测新增价值再接第二数字目录
+读 CheapShark 和 IsThereAnyDeal 官方 API 文档；用明确项目 UA 对 CheapShark 零价且在促销的列表做一次限定 5 条的人工查询。HTTP 200、1257 字节、SHA256 53e8dbb4649b2ddab2a8401423e2a466d0679c3282c41dafa33698e6cafe3f1f；实际 2 条，与已保存的 GamerPower 14 条基线中的 3850/3852 对照，未发现独立新活动。未跟踪跳转、未调用 ITAD、未建自动源、未改业务库。本次证明候选的条款和抽样重合，不证明长期收益或国区价格。
