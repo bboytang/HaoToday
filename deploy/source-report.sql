@@ -35,4 +35,23 @@ SELECT s.key, s.enabled, coalesce(ok,0) AS ok, coalesce(failed,0) AS failed,
     coalesce(new_verified_live,0) AS new_verified_live
 FROM discovery_source s LEFT JOIN batches b ON b.source_id=s.id
 LEFT JOIN cohort c ON c.source_id=s.id ORDER BY s.key;
+-- 仅完整目录型源；新出现不等于活动刚刚首发。上次请求开始→本次成功结束
+-- 包含网络与处理时间，失败/暂停不缩短区间，允许上一批在报告窗口外。
+WITH arrivals AS (
+    SELECT o.id, r.finished,
+        (SELECT p.started FROM discovery_run p
+         WHERE p.source_id=r.source_id AND p.id<>r.id AND p.status='ok' AND p.finished <= r.started
+         ORDER BY p.finished DESC, p.id DESC LIMIT 1) AS prior_start
+    FROM discovery_observation o JOIN discovery_run r ON r.id=o.first_run_id
+    JOIN discovery_source s ON s.id=o.source_id AND s.id=r.source_id
+    WHERE s.key='gamerpower' AND NOT o.baseline AND r.status='ok'
+      AND r.started >= now()-interval '14 days' AND r.started < now()
+), bounds AS (
+    SELECT CASE WHEN prior_start <= finished THEN extract(epoch FROM finished-prior_start)/60 END AS upper_min
+    FROM arrivals
+)
+SELECT count(*) AS new_seen, count(upper_min) AS bounded, count(*)-count(upper_min) AS unknown_bound,
+    round((percentile_cont(0.9) WITHIN GROUP (ORDER BY upper_min))::numeric,2) AS listing_window_p90_min,
+    round(max(upper_min),2) AS listing_window_max_min
+FROM bounds;
 COMMIT;
