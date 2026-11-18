@@ -88,3 +88,6 @@
 
 ### T04 · 不依赖 AI 的数字权益候选初筛
 先复现 test_review_priority_not_publication：旧采集结果无 triage（KeyError），再将步骤特征判断接入原有成功批次，不另增请求、不存步骤全文。加测目录移除、付费/积分、抽奖、无须购买及步骤改变后停展。scripts/check.sh：41 项通过。开发库真实名单的后台优先筛选返回 3 条。线上 upgrade.sh haotoday-app:t04-triage-1，备份 backups/pre-upgrade-20261118T155015Z.dump，无新增迁移；运行 discovery.service 成功：enriched=14，priority=3，review=10，hold=1，exclude=0，new=0。公网详情及频道回归通过。该轮没有模型请求、没有据此认定可领或发布新活动，尚无全量精度评估。
+
+### T04 · 第一条按官方免费入口范围验证的权益
+核对 GamerPower 3830 / 3852 的跳转目标，人工打开各官方页面。itch.io 活动 HTML SHA256 5d0b2d3d254fdf5839b87e2a238c1cfb248a93819aa349c012b4c1c7aff6cf1e。Playwright 未登录检查：活动倒计时 3 天 7 小时 8 分，点 Get the Bundle 看见可跳过付款；到此为止，没有代领、下单或下载。Epic 商品页 HTTP 403，另一候选未发布。用已有 Observation 发布内测站 #3，费用与资格证据分字段保存；开发库重复导入不覆盖，生产一次写入。经公网确认首页精选、零支出筛选、详情的出处/时间/核验边界以及线索频道隔离。只更内容与交接，无镜像升级。本次未产生自动新增或实际手机收件证据。
