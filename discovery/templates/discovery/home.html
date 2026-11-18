@@ -6,4 +6,6 @@
 <p>目前没有仍在有效期内的已验证情报。待核实的活动单独列出，不算入精选。</p>{% endfor %}
 <p><a href="{% url 'feed' %}">浏览全部已验证情报 →</a></p>
 <section class="lead-note"><h2>抢先线索</h2><p>已有出处，领取资格或实际费用仍可能需要确认。</p>{% if lead_count %}<a class="go" href="{% url 'feed' %}?channel=lead">查看 {{ lead_count }} 条抢先线索</a>{% else %}<p>暂无有效线索。</p>{% endif %}</section>
+{% if upcoming %}<section><h2>即将开始</h2><p>以下是预告，现在不能领取。时间为北京时间。</p>
+{% for o in upcoming %}<article><small>{{ o.starts_at|date:"m月d日 H:i" }} 开始 · {{ o.get_channel_display }} · {{ o.category }}</small><h2><a href="{% url 'offer' o.pk %}">{{ o.title }}</a></h2></article>{% endfor %}</section>{% endif %}
 {% endblock %}

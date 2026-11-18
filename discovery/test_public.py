@@ -119,12 +119,32 @@ class PublicTests(TestCase):
 
     def test_future_offer_not_actionable(self):
         self.offer.channel = "lead"
+        self.offer.conditions = "仅限指定设备"
+        self.offer.evidence = "未验证个人资格"
+        self.offer.steps = "未到点请勿办理"
         self.offer.starts_at = timezone.now() + timedelta(minutes=10)
         self.offer.save()
         self.assertNotContains(self.client.get("/?channel=lead"), self.offer.title)
         response = self.client.get(self.url)
+        self.assertContains(self.client.get("/"), "即将开始")
+        self.assertContains(self.client.get("/"), self.offer.title)
+        self.assertContains(response, self.offer.conditions)
+        self.assertContains(response, self.offer.evidence)
+        self.assertNotContains(response, self.offer.steps)
         self.assertContains(response, "尚未开始")
         self.assertNotContains(response, self.offer.official_url)
+
+    def test_hidden_previews_not_listed(self):
+        self.offer.starts_at = timezone.now() + timedelta(minutes=10)
+        self.offer.save()
+        self.assertNotContains(self.client.get("/"), self.offer.title)
+        self.offer.channel = "lead"
+        self.offer.review_state = "withdrawn"
+        self.offer.status_reason = "活动取消"
+        self.offer.conditions = "已作废的规则"
+        self.offer.save()
+        self.assertNotContains(self.client.get("/"), self.offer.title)
+        self.assertNotContains(self.client.get(self.url), self.offer.conditions)
 
     def test_filtered_feed_uses_only_visible_public_fields(self):
         self.offer.platform = "测试商店"

@@ -25,7 +25,9 @@ def home(request):
         return feed(request)
     active = available_offers()
     picks = active.filter(channel=Offer.Channel.VERIFIED).select_related("observation__source").order_by("-checked_at", "-id")[:3]
-    return render(request, "discovery/home.html", {"picks": picks,
+    upcoming = Offer.objects.filter(channel__in=[Offer.Channel.VERIFIED, Offer.Channel.LEAD],
+        review_state=Offer.ReviewState.AVAILABLE, starts_at__gt=timezone.now()).order_by("starts_at", "id")[:3]
+    return render(request, "discovery/home.html", {"picks": picks, "upcoming": upcoming,
         "lead_count": active.filter(channel=Offer.Channel.LEAD).count()})
 
 
@@ -64,16 +66,18 @@ def feed(request, state_only=False):
 def detail(request, pk):
     offer = get_object_or_404(Offer.objects.select_related("observation__source").exclude(channel=Offer.Channel.DRAFT), pk=pk)
     now = timezone.now()
+    upcoming = False
     if offer.review_state != Offer.ReviewState.AVAILABLE:
         status, reason = offer.get_review_state_display(), offer.status_reason
     elif offer.ends_at <= now:
         status, reason = "已结束展示", "本站记录的有效时间已结束。"
     elif offer.starts_at and offer.starts_at > now:
-        status, reason = "尚未开始", "请在活动开始后再次查看。"
+        upcoming = True
+        status, reason = "尚未开始", "现在可以查看条件或收藏；活动开始后再查看参与入口。"
     else:
         status, reason = "", ""
     saved = request.user.is_authenticated and Favorite.objects.filter(user=request.user, offer=offer).exists()
-    return render(request, "discovery/detail.html", {"offer": offer, "status": status, "reason": reason, "saved": saved,
+    return render(request, "discovery/detail.html", {"offer": offer, "status": status, "reason": reason, "upcoming": upcoming, "saved": saved,
         "revision_id": offer.revisions.values_list("pk", flat=True).first(), "kinds": Feedback.Kind.choices})
 
 
