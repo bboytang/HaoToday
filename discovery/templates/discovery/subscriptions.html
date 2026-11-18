@@ -1,0 +1,7 @@
+{% extends "discovery/base.html" %}
+{% block title %}订阅 · HaoToday{% endblock %}
+{% block body %}<h1>我的订阅</h1><p>只看符合自己条件的活动。各条件需同时满足；当前仅支持保存和预览，尚不会发手机提醒。</p>
+{% for s in items %}<article><small>订阅 #{{ s.pk }}</small><h2>{{ s.category|default:"全部板块" }}{% if s.keyword %} · {{ s.keyword }}{% endif %}</h2><p>{{ s.platform|default:"不限平台" }} · {{ s.region|default:"不限地区" }} · {% if s.leads %}包含线索{% else %}仅已验证{% endif %}</p>
+<a href="?preview={{ s.pk }}#results">预览匹配</a><form method="post" action="{% url 'unsubscribe' s.pk %}">{% csrf_token %}<button>取消这条订阅</button></form></article>{% empty %}<p>尚未订阅。可按板块或关键词添加第一条规则。</p>{% endfor %}
+{% if preview != None %}<section id="results"><h2>目前匹配（最多 10 条）</h2>{% for o in preview %}<p><a href="{% url 'offer' o.pk %}">{{ o.title }}</a> · {{ o.get_channel_display }}</p>{% empty %}<p>暂无符合条件的活动。</p>{% endfor %}</section>{% endif %}
+<h2>添加兴趣条件</h2><form method="post">{% csrf_token %}{{ form.as_p }}<button>保存订阅</button></form>{% endblock %}

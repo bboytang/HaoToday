@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Observation, Offer, OfferRevision, Run, Source
+from .models import Feedback, Observation, Offer, OfferRevision, Run, Source
 
 
 @admin.register(Source)
@@ -43,3 +43,13 @@ class OfferAdmin(admin.ModelAdmin):
 @admin.register(OfferRevision)
 class OfferRevisionAdmin(ReadOnlyAdmin):
     list_display = ("id", "offer_id", "recorded_at")
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("id", "revision_id", "kind", "reviewed", "created_at")
+    list_filter = ("reviewed", "kind")
+    readonly_fields = ("user", "revision", "kind", "created_at")
+
+    def has_add_permission(self, request):
+        return False

@@ -128,3 +128,44 @@ class Favorite(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "offer"], name="one_favorite_per_user_offer")]
+
+
+class Feedback(models.Model):
+    class Kind(models.TextChoices):
+        PRICE = "price", "实际价格不符"
+        ELIGIBILITY = "eligibility", "参与条件不符"
+        EXPIRED = "expired", "活动已失效"
+
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    revision = models.ForeignKey(OfferRevision, on_delete=models.PROTECT)
+    kind = models.CharField("问题类型", max_length=12, choices=Kind)
+    reviewed = models.BooleanField("已处理", default=False)
+    reply = models.CharField("给反馈者的说明", max_length=240, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "revision", "kind"], name="unique_feedback_kind_version")]
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    category = models.CharField("板块", max_length=10, choices=Offer._meta.get_field("category").choices, blank=True)
+    keyword = models.CharField("关键词", max_length=100, blank=True)
+    platform = models.CharField("平台", max_length=80, blank=True)
+    region = models.CharField("地区", max_length=80, blank=True)
+    leads = models.BooleanField("同时包含待核线索", default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "category", "keyword", "platform", "region", "leads"],
+            name="unique_subscription_terms")]
+
+    def matching(self, offers):
+        channels = [Offer.Channel.VERIFIED, Offer.Channel.LEAD] if self.leads else [Offer.Channel.VERIFIED]
+        offers = offers.filter(channel__in=channels)
+        for field in ("category", "platform", "region"):
+            if value := getattr(self, field):
+                offers = offers.filter(**{field: value})
+        if self.keyword:
+            offers = offers.filter(models.Q(title__icontains=self.keyword) | models.Q(conditions__icontains=self.keyword)
+                                   | models.Q(platform__icontains=self.keyword))
+        return offers

@@ -1,19 +1,25 @@
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST, require_safe
+from django.views.decorators.http import require_POST, require_safe, require_http_methods
 
-from .models import Favorite, Offer
+from .forms import SubscriptionForm
+from .models import Favorite, Feedback, Offer, Subscription
+
+
+def available_offers():
+    now = timezone.now()
+    return Offer.objects.filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now),
+        review_state=Offer.ReviewState.AVAILABLE, ends_at__gt=now)
 
 
 @require_safe
 def feed(request):
     channel = Offer.Channel.LEAD if request.GET.get("channel") == "lead" else Offer.Channel.VERIFIED
-    now = timezone.now()
-    active = Offer.objects.filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now),
-        channel=channel, review_state=Offer.ReviewState.AVAILABLE, ends_at__gt=now)
+    active = available_offers().filter(channel=channel)
     q = request.GET.get("q", "").strip()[:100]
     selected = {key: request.GET.get(key, "").strip()[:80] for key in ("category", "platform", "region")}
     zero = request.GET.get("zero") == "1"
@@ -46,7 +52,8 @@ def detail(request, pk):
     else:
         status, reason = "", ""
     saved = request.user.is_authenticated and Favorite.objects.filter(user=request.user, offer=offer).exists()
-    return render(request, "discovery/detail.html", {"offer": offer, "status": status, "reason": reason, "saved": saved})
+    return render(request, "discovery/detail.html", {"offer": offer, "status": status, "reason": reason, "saved": saved,
+        "revision_id": offer.revisions.values_list("pk", flat=True).first(), "kinds": Feedback.Kind.choices})
 
 
 @login_required
@@ -54,7 +61,8 @@ def detail(request, pk):
 def account(request):
     favorites = Favorite.objects.filter(user=request.user).exclude(offer__channel=Offer.Channel.DRAFT)
     page = Paginator(favorites.select_related("offer").order_by("-saved_at", "-id"), 24).get_page(request.GET.get("page"))
-    return render(request, "discovery/account.html", {"favorites": page})
+    return render(request, "discovery/account.html", {"favorites": page, "reports": Feedback.objects.filter(
+        user=request.user).exclude(revision__offer__channel=Offer.Channel.DRAFT).select_related("revision__offer").order_by("-pk")[:24]})
 
 
 @login_required
@@ -66,6 +74,46 @@ def favorite(request, pk):
     elif request.POST.get("action") == "remove":
         Favorite.objects.filter(user=request.user, offer=offer).delete()
     else:
-        from django.http import HttpResponseBadRequest
         return HttpResponseBadRequest("无效的收藏操作")
     return redirect("offer", pk=pk)
+
+
+@login_required
+@require_POST
+def feedback(request, pk):
+    offer = get_object_or_404(Offer.objects.exclude(channel=Offer.Channel.DRAFT), pk=pk)
+    kind = request.POST.get("kind")
+    version = request.POST.get("revision", "")
+    if kind not in Feedback.Kind.values or not version.isascii() or not version.isdigit() or len(version) > 18:
+        return HttpResponseBadRequest("反馈类型或版本无效")
+    revision = get_object_or_404(offer.revisions, pk=int(version))
+    Feedback.objects.get_or_create(user=request.user, revision=revision, kind=kind)
+    return redirect("account")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def subscriptions(request):
+    form = SubscriptionForm(request.POST if request.method == "POST" else None)
+    items = Subscription.objects.filter(user=request.user).order_by("-id")
+    if request.method == "POST" and form.is_valid():
+        if items.count() >= 30:
+            form.add_error(None, "最多保存 30 条订阅。")
+        else:
+            Subscription.objects.get_or_create(user=request.user, **form.cleaned_data)
+            return redirect("subscriptions")
+    # 只预览本人选择的一条规则，而不是为每一条订阅重复扫描活动表。
+    preview = None
+    if selected := request.GET.get("preview"):
+        if not selected.isascii() or not selected.isdigit() or len(selected) > 18:
+            return HttpResponseBadRequest("订阅编号无效")
+        rule = get_object_or_404(items, pk=int(selected))
+        preview = rule.matching(available_offers()).order_by("-checked_at", "-id")[:10]
+    return render(request, "discovery/subscriptions.html", {"form": form, "items": items, "preview": preview})
+
+
+@login_required
+@require_POST
+def unsubscribe(request, pk):
+    get_object_or_404(Subscription, pk=pk, user=request.user).delete()
+    return redirect("subscriptions")

@@ -143,3 +143,45 @@ class PublicTests(TestCase):
         self.assertEqual(c.post(f"{self.url}favorite/", {"action":"save"}).status_code, 403)
         self.assertEqual(c.post("/account/logout/", {"csrfmiddlewaretoken":c.cookies["csrftoken"].value}).status_code, 302)
         self.assertEqual(c.get("/account/").status_code, 302)
+
+    def test_feedback_is_private_versioned_and_not_automatic_withdrawal(self):
+        from django.contrib.auth import get_user_model
+        from .models import Feedback
+        self.offer.channel = "lead"
+        self.offer.save()
+        version = self.offer.revisions.first().pk
+        self.client.force_login(get_user_model().objects.create_user("reporter"))
+        data = dict(revision=version, kind="price")
+        for _ in range(2):
+            self.assertRedirects(self.client.post(self.url+"feedback/", data), "/account/")
+        self.assertEqual(Feedback.objects.count(), 1)
+        self.assertContains(self.client.get("/account/"), "待复核")
+        self.offer.refresh_from_db()
+        self.assertEqual(self.offer.review_state, "available")
+        self.assertEqual(self.client.post(self.url+"feedback/", data | {"revision":0}).status_code, 404)
+        self.client.force_login(get_user_model().objects.create_user("other"))
+        self.assertNotContains(self.client.get("/account/"), "待复核")
+
+    def test_subscription_preview_and_ownership(self):
+        from django.contrib.auth import get_user_model
+        from .models import Subscription
+        self.offer.channel = "lead"
+        self.offer.save()
+        self.client.force_login(get_user_model().objects.create_user("subscriber"))
+        path = "/subscriptions/"
+        self.assertContains(self.client.post(path, {}), "至少填写一个")
+        for _ in range(2):
+            self.assertRedirects(self.client.post(path, {"keyword":"测试"}), path)
+        rule = Subscription.objects.get()
+        preview = f"{path}?preview={rule.pk}"
+        self.assertContains(self.client.get(preview), "暂无符合条件")
+        rule.leads = True
+        rule.save()
+        self.assertContains(self.client.get(preview), self.offer.title)
+        self.offer.review_state = "suspect"
+        self.offer.status_reason = "测试暂停"
+        self.offer.save()
+        self.assertNotContains(self.client.get(preview), self.offer.title)
+        self.client.force_login(get_user_model().objects.create_user("other-sub"))
+        self.assertEqual(self.client.get(preview).status_code, 404)
+        self.assertEqual(self.client.post(f"{path}{rule.pk}/remove/").status_code, 404)
