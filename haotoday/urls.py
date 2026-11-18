@@ -19,7 +19,8 @@ def health(request):
 from discovery import accounts, devices, views
 
 urlpatterns = [
-    path("", views.feed, name="feed"),
+    path("", views.home, name="home"),
+    path("feed/", views.feed, name="feed"),
     path("offers/<int:pk>/", views.detail, name="offer"),
     path("account/", views.account, name="account"),
     path("inbox/", views.inbox, name="inbox"),
@@ -42,7 +43,7 @@ urlpatterns = [
         template_name="discovery/mail_form.html", extra_context={"title":"设置新密码"}), name="password_reset_confirm"),
     path("account/reset/complete/", auth_views.PasswordResetCompleteView.as_view(template_name="discovery/mail_form.html",
         extra_context={"title":"密码已更新"}), name="password_reset_complete"),
-    path("account/logout/", auth_views.LogoutView.as_view(next_page="feed"), name="logout"),
+    path("account/logout/", auth_views.LogoutView.as_view(next_page="home"), name="logout"),
     path("offers/<int:pk>/favorite/", views.favorite, name="favorite"),
     path("admin/", admin.site.urls),
     path("health/", health),

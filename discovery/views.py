@@ -17,6 +17,17 @@ def available_offers():
 
 
 @require_safe
+def home(request):
+    # 保留已分享的旧频道/筛选网址；无关跟踪参数不改变首页。
+    if {"channel", "page", "q", "category", "platform", "region", "zero"}.intersection(request.GET):
+        return feed(request)
+    active = available_offers()
+    picks = active.filter(channel=Offer.Channel.VERIFIED).select_related("observation__source").order_by("-checked_at", "-id")[:3]
+    return render(request, "discovery/home.html", {"picks": picks,
+        "lead_count": active.filter(channel=Offer.Channel.LEAD).count()})
+
+
+@require_safe
 def feed(request):
     channel = Offer.Channel.LEAD if request.GET.get("channel") == "lead" else Offer.Channel.VERIFIED
     active = available_offers().filter(channel=channel)

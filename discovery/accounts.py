@@ -153,5 +153,5 @@ def delete_account(request):
             with transaction.atomic():
                 logout(request)
                 user.delete()
-            return redirect("feed")
+            return redirect("home")
     return render(request, "discovery/delete_account.html", {"error":error})

@@ -73,3 +73,6 @@
 
 ### T07 · 首条内地生活线索上线
 人工核对陇南公告、区分免费与半价景区，独立整理为线索 #2。先用 test_manual_official_notice_not_attributed_to_game_directory 复现所有详情错误署名 GamerPower（1 failed）；改列表/详情共用按来源渲染的片段，scripts/check.sh（32 passed）。开发库重复导入同一公告条目，created=True/False、同一 offer_id。线上 upgrade.sh haotoday-app:t07-notice-1 退出 0，库迁移仍是 0012，备份 backups/pre-upgrade-20261118T153516Z.dump。发布后公网实测生活筛选、详情来源和资格边界、已验证频道隔离及原有数字权益署名，均通过。线上只读报告人工 1、自动新增 0。未测试现场办理，无自动采集许可。
+
+### T03 · 首页和情报列表分离
+先用 test_home_separates_verified_picks_from_lead_count 验证旧首页无法显示待核实条数（1 failed）。独立首页选最近核对且仍有效的至多三条已验证情报，线索只显示有效数量及独立入口；新 /feed/ 承载筛选，旧参数网址保持可用。移动端四入口底栏，桌面顶栏。scripts/check.sh 在一次性 PostgreSQL 上 33 项通过。镜像 haotoday-app:t03-home-1 上线，无新增迁移；升级前备份 backups/pre-upgrade-20261118T153805Z.dump。用 Playwright Chromium 经公网 HTTPS 在 360×740 和 1280×800 各完成首页→线索→陇南详情→首页，两档首页无横向溢出，导航位置符合预期。不代表 iPhone/Android 真机验收。

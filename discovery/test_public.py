@@ -41,6 +41,18 @@ class PublicTests(TestCase):
             self.assertContains(page, self.offer.evidence_url)
             self.assertNotContains(page, "GamerPower")
 
+    def test_home_separates_verified_picks_from_lead_count(self):
+        self.offer.channel = "lead"
+        self.offer.save()
+        home = self.client.get("/")
+        self.assertContains(home, "今日手记")
+        self.assertContains(home, "查看 1 条抢先线索")
+        self.assertNotContains(home, self.offer.title)
+        self.assertContains(self.client.get("/feed/?channel=lead"), self.offer.title)
+        self.assertContains(self.client.get("/?channel=lead"), self.offer.title)
+        Offer.objects.update(ends_at=timezone.now()-timedelta(seconds=1))
+        self.assertNotContains(self.client.get("/"), "查看 1 条抢先线索")
+
     def prepare_verified(self):
         for field in ("conditions", "evidence", "steps", "reward_basis", "price_basis", "eligibility_basis", "time_basis"):
             setattr(self.offer, field, "已核对测试条款")

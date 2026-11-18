@@ -1,0 +1,9 @@
+{% extends "discovery/base.html" %}
+{% block body %}
+<section class="mast"><small class="folio">权益观察　／　{% now "m.d" %}</small><h1>今日手记</h1><p>先看实际支出，再看领取条件。</p></section>
+<h2>近期核实的权益</h2>
+{% for o in picks %}<article><small>已验证 · {{ o.category }}</small><h2><a href="{% url 'offer' o.pk %}">{{ o.title }}</a></h2><p>{{ o.display_cost }}</p><small>核对于 {{ o.checked_at|date:"m月d日 H:i" }} · {% include "discovery/source.html" with offer=o only %}</small></article>{% empty %}
+<p>目前没有仍在有效期内的已验证情报。待核实的活动单独列出，不算入精选。</p>{% endfor %}
+<p><a href="{% url 'feed' %}">浏览全部已验证情报 →</a></p>
+<section class="lead-note"><h2>抢先线索</h2><p>已有出处，领取资格或实际费用仍可能需要确认。</p>{% if lead_count %}<a class="go" href="{% url 'feed' %}?channel=lead">查看 {{ lead_count }} 条抢先线索</a>{% else %}<p>暂无有效线索。</p>{% endif %}</section>
+{% endblock %}
