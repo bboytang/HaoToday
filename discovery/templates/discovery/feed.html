@@ -9,5 +9,38 @@
 <label>适用地区<select name="region"><option value="">全部地区</option>{% for v in choices.region %}<option {% if v == selected.region %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
 <label><input type="checkbox" name="zero" value="1" {% if zero %}checked{% endif %}>仅已核实零支出</label>
 <button>查找情报</button>{% if filtered %}<a href="?channel={{ channel }}">清除筛选</a>{% endif %}</form>
+<div id="live-feed" data-etag="{{ feed_etag }}" data-url="{% url 'feed-state' %}" style="min-height:2.25rem">
+<small role="status"></small> <button hidden type="button">刷新当前结果</button></div>
+<script>
+(() => {
+  const box=document.getElementById('live-feed'), status=box.querySelector('small'), refresh=box.querySelector('button');
+  const url=new URL(box.dataset.url,location.origin); url.search=location.search;
+  let timer, busy=false, delay=30000;
+  status.textContent='页面打开时自动检查变化';
+  refresh.onclick=()=>location.reload();
+  function schedule(ms) {
+    clearTimeout(timer);
+    if (!document.hidden && refresh.hidden) timer=setTimeout(check,ms);
+  }
+  async function check() {
+    if (busy || document.hidden) return;
+    busy=true;
+    const ctl=new AbortController(), limit=setTimeout(()=>ctl.abort(),8000);
+    try {
+      const res=await fetch(url,{method:'HEAD',cache:'no-store',redirect:'error',signal:ctl.signal,
+        headers:{'If-None-Match':box.dataset.etag}});
+      if (res.status===304 || (res.ok && res.headers.get('ETag')===box.dataset.etag)) {
+        status.textContent='当前结果没有变化';
+      } else if (res.ok && res.headers.has('ETag')) {
+        status.textContent='当前筛选的情报有变化'; refresh.hidden=false;
+      } else { throw Error(); }
+      delay=30000;
+    } catch { status.textContent='暂时无法检查更新，将自动重试'; delay=Math.min(delay*2,120000); }
+    finally { clearTimeout(limit); busy=false; schedule(delay); }
+  }
+  document.addEventListener('visibilitychange',()=>schedule(0));
+  schedule(delay);
+})();
+</script>
 {% for o in offers %}<article><small>{{ o.category }} · {{ o.get_channel_display }}</small><h2><a href="{% url 'offer' o.pk %}">{{ o.title }}</a></h2><p>{{ o.display_cost }}</p><small>核对于 {{ o.checked_at|date:"m月d日 H:i" }} · 发现来源：{% include "discovery/source.html" with offer=o only %}</small></article>{% empty %}<article><h2>{% if filtered %}没有符合筛选条件的情报{% else %}本频道暂时没有有效情报{% endif %}</h2><p>没有符合条件的活动时，我们保留空位，不用普通促销填充。</p></article>{% endfor %}
 {% if offers.has_other_pages %}<nav aria-label="分页">{% if offers.has_previous %}<a href="{% querystring page=offers.previous_page_number %}">上一页</a>{% endif %} 第 {{ offers.number }} / {{ offers.paginator.num_pages }} 页 {% if offers.has_next %}<a href="{% querystring page=offers.next_page_number %}">下一页</a>{% endif %}</nav>{% endif %}{% endblock %}

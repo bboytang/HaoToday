@@ -1,13 +1,15 @@
+import hashlib
+
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
-from django.http import HttpResponseBadRequest
+from django.db.models import OuterRef, Q, Subquery
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_safe, require_http_methods
 
 from .forms import SubscriptionForm
-from .models import Favorite, Feedback, Offer, Subscription
+from .models import Favorite, Feedback, Offer, OfferRevision, Subscription
 
 
 def available_offers():
@@ -28,7 +30,7 @@ def home(request):
 
 
 @require_safe
-def feed(request):
+def feed(request, state_only=False):
     channel = Offer.Channel.LEAD if request.GET.get("channel") == "lead" else Offer.Channel.VERIFIED
     active = available_offers().filter(channel=channel)
     q = request.GET.get("q", "").strip()[:100]
@@ -39,13 +41,21 @@ def feed(request):
         offers = offers.filter(Q(title__icontains=q) | Q(conditions__icontains=q) | Q(platform__icontains=q))
     if zero:
         offers = offers.filter(channel=Offer.Channel.VERIFIED, payable_fen=0, shipping_fen=0, membership_fen=0)
+    latest_version = OfferRevision.objects.filter(offer_id=OuterRef("pk")).order_by("-id").values("id")[:1]
+    offers = offers.annotate(version_id=Subquery(latest_version)).order_by("-checked_at","-id")
+    rows = offers.only("id") if state_only else offers.select_related("observation__source")
+    page = Paginator(rows, 24).get_page(request.GET.get("page"))
+    signature = f"{page.number}/{page.paginator.count}:" + ",".join(str(o.version_id) for o in page)
+    etag = '"' + hashlib.sha256(signature.encode()).hexdigest() + '"'
+    if state_only:
+        return HttpResponse(status=304 if request.headers.get("If-None-Match")==etag else 200,
+            headers={"ETag":etag,"Cache-Control":"private, no-store"})
     choices = {}
     for field in selected:
         values = active.exclude(**{field: ""}).order_by(field).values_list(field, flat=True).distinct()
         choices[field] = sorted(set(values) | ({selected[field]} if selected[field] else set()))
-    page = Paginator(offers.select_related("observation__source").order_by("-checked_at", "-id"), 24).get_page(request.GET.get("page"))
     return render(request, "discovery/feed.html", {
-        "offers": page, "channel": channel, "q": q, "selected": selected, "choices": choices,
+        "feed_etag": etag, "offers": page, "channel": channel, "q": q, "selected": selected, "choices": choices,
         "zero": zero, "filtered": bool(q or any(selected.values()) or zero),
     })
 

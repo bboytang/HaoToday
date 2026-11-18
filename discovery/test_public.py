@@ -230,3 +230,24 @@ class PublicTests(TestCase):
         self.client.force_login(get_user_model().objects.create_user("other-sub"))
         self.assertEqual(self.client.get(preview).status_code, 404)
         self.assertEqual(self.client.post(f"{path}{rule.pk}/remove/").status_code, 404)
+
+    def test_feed_change_signal_respects_filters_and_public_state(self):
+        path="/feed/state/?channel=lead&q=测试"
+        def check(tag):
+            return self.client.head(path,HTTP_IF_NONE_MATCH=tag)
+        initial=self.client.get("/feed/?channel=lead&q=测试")
+        tag=initial.context["feed_etag"]
+        self.assertEqual(check(tag).status_code,304)
+        Offer.objects.filter(pk=self.offer.pk).update(title="测试草稿修改")
+        self.assertEqual(check(tag).status_code,304)
+        Offer.objects.filter(pk=self.offer.pk).update(channel="lead",title="无关")
+        self.assertEqual(check(tag).status_code,304)
+        Offer.objects.filter(pk=self.offer.pk).update(title="测试权益")
+        response=check(tag)
+        self.assertEqual(response.status_code,200)
+        updated=response["ETag"]
+        self.assertEqual(check(updated).status_code,304)
+        Offer.objects.filter(pk=self.offer.pk).update(cost="需要运费")
+        self.assertNotEqual(check(updated)["ETag"],updated)
+        Offer.objects.filter(pk=self.offer.pk).update(ends_at=timezone.now()-timedelta(seconds=1))
+        self.assertEqual(check(tag).status_code,304)

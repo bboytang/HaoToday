@@ -21,6 +21,7 @@ from discovery import accounts, devices, views
 urlpatterns = [
     path("", views.home, name="home"),
     path("feed/", views.feed, name="feed"),
+    path("feed/state/", views.feed, {"state_only": True}, name="feed-state"),
     path("offers/<int:pk>/", views.detail, name="offer"),
     path("account/", views.account, name="account"),
     path("inbox/", views.inbox, name="inbox"),
