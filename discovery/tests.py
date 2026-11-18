@@ -98,3 +98,40 @@ class SyncTests(TestCase):
         fetch.return_value=[dict(row(1),instructions="No purchase required. Add it to your library.",
             end_date="2027-01-01 23:00:00")]
         self.assertEqual(sync()["triage"]["priority"],1)
+
+    def test_description_cost_change_pauses_offer_without_copying_description(self, fetch):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import Offer
+        entry = dict(row(1),instructions="Add it to your library.",description="Free until Friday.",
+            end_date="2027-01-01 23:00:00")
+        fetch.return_value=[entry]
+        sync()
+        ob=Observation.objects.get()
+        offer=Offer.objects.create(observation=ob,channel="lead",checked_at=timezone.now(),
+            ends_at=timezone.now()+timedelta(days=1))
+        # 从旧初筛版本补摘要不应撤下原有公开项，也不计新发现。
+        old=ob.facts["triage"]
+        del old["description_sha256"]
+        old["version"]=1
+        ob.save()
+        self.assertEqual(sync()["enriched"],1)
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"available")
+        entry["description"]="  FREE until friday.  "
+        self.assertEqual(sync()["unchanged"],1)
+        entry["description"]="This giveaway requires 10 ARP to claim."
+        self.assertEqual(sync()["triage"]["hold"],1)
+        offer.refresh_from_db()
+        ob.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")
+        self.assertNotIn(entry["description"],str(ob.facts))
+        # 不靠关键词：即使等级未变，描述中的地区限制变化也必须触发复核。
+        entry["description"]="Offer available in selected regions."
+        sync()
+        offer.review_state="available"
+        offer.save()
+        entry["description"]="Offer available in Japan only."
+        self.assertEqual(sync()["triage"]["priority"],1)
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")

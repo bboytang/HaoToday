@@ -65,13 +65,16 @@ def sync():
                     elif obj.facts != facts:
                         previous = obj.facts.get("triage", {})
                         rules_changed = bool(previous and previous.get("steps_sha256") != assessment["steps_sha256"])
-                        if rules_changed or assessment["tier"] in ("exclude", "hold") or any(
+                        desc_changed = "description_sha256" in previous and previous["description_sha256"] != assessment["description_sha256"]
+                        if rules_changed or desc_changed or assessment["tier"] in ("exclude", "hold") or any(
                                 obj.facts.get(k) != facts[k] for k in ("end_date", "platforms", "title")):
                             Offer.objects.filter(observation=obj, review_state=Offer.ReviewState.AVAILABLE,
                                 channel__in=[Offer.Channel.LEAD, Offer.Channel.VERIFIED],
                                 ends_at__gt=timezone.now()).update(review_state=Offer.ReviewState.SUSPECT,
                                 status_reason="发现来源的权益或领取条件需重新核对，暂停领取指引，等待复核。")
-                        enriched = not previous and all(obj.facts.get(k)==v for k,v in facts.items() if k!="triage")
+                        enriched = (not previous or (previous.get("version") == 1 and not rules_changed
+                            and previous.get("tier") == assessment["tier"])) and all(
+                            obj.facts.get(k)==v for k,v in facts.items() if k!="triage")
                         obj.facts = facts
                         obj.save(update_fields=["facts", "updated"])
                         counts["enriched" if enriched else "changed"] += 1
