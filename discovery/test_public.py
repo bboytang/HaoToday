@@ -72,6 +72,28 @@ class PublicTests(TestCase):
         self.assertContains(self.client.get("/"), "¥6.01")
         self.assertContains(self.client.get(self.url), "资格依据")
 
+    def test_shopping_gift_cannot_hide_required_purchase(self):
+        from django.db import IntegrityError, transaction
+        self.prepare_verified()
+        self.offer.category="购物"
+        self.offer.payable_fen=0
+        self.offer.shipping_fen=0
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.offer.save()  # 赠品未标明是否需要另购，不得进入已验证。
+        self.offer.required_purchase_fen=9900
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.offer.save()
+        self.offer.payable_fen=9900
+        self.offer.save()
+        self.assertContains(self.client.get(self.url),"¥99.00")
+        self.assertNotContains(self.client.get("/feed/?zero=1"),self.offer.title)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Offer.objects.filter(pk=self.offer.pk).update(payable_fen=0)
+        self.offer.required_purchase_fen=0
+        self.offer.payable_fen=0
+        self.offer.save()
+        self.assertContains(self.client.get("/feed/?zero=1"),self.offer.title)
+
     def test_expired_not_actionable(self):
         self.prepare_verified()
         self.offer.channel = "verified"

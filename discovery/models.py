@@ -63,6 +63,8 @@ class Offer(models.Model):
 
     # None 表示未知；已核实无需支付的项目须明确填 0。
     payable_fen = models.PositiveIntegerField("商品或服务实付（分，不含运费及另购会员）", null=True, blank=True)
+    required_purchase_fen = models.PositiveIntegerField("购物领取所需另购商品的最低新增实付（分，已计入商品实付）",
+        null=True, blank=True, help_text="购物已验证必填。无须另购填 0；券前满额不等于实付，未知请保持线索。")
     shipping_fen = models.PositiveIntegerField("运费或配送费（分）", null=True, blank=True)
     membership_fen = models.PositiveIntegerField("必须新增会员费（分）", null=True, blank=True)
     reward_basis = models.TextField("权益证据（核验原文要点）", blank=True)
@@ -75,6 +77,11 @@ class Offer(models.Model):
             name="status_requires_public_reason",
             condition=models.Q(review_state="available") | (
                 models.Q(review_state__in=["suspect", "withdrawn"]) & models.Q(status_reason__regex=r"\S")),
+        ), models.CheckConstraint(
+            name="verified_shopping_requires_purchase_floor",
+            condition=~models.Q(channel="verified",category="购物") | models.Q(
+                required_purchase_fen__isnull=False, payable_fen__gte=models.F("required_purchase_fen")),
+            violation_error_message="购物已验证须核实另购门槛，且商品实付不能低于领取所需的最低新增实付。",
         ), models.CheckConstraint(
             name="end_after_known_start",
             condition=models.Q(starts_at__isnull=True) | models.Q(ends_at__gt=models.F("starts_at")),
@@ -95,6 +102,10 @@ class Offer(models.Model):
         if self.channel != self.Channel.VERIFIED:
             return self.cost
         total = self.payable_fen + self.shipping_fen + self.membership_fen
+        purchase = self.required_purchase_fen
+        if self.category == "购物" and purchase:
+            return (f"必要支出 ¥{total // 100}.{total % 100:02d}，"
+                    f"其中至少 ¥{purchase // 100}.{purchase % 100:02d} 为领取所需另购实付")
         return f"必要支出 ¥{total // 100}.{total % 100:02d}（含配送费及必须新增的会员费）"
 
     def __str__(self):
