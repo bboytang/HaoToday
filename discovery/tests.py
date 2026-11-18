@@ -35,3 +35,32 @@ class SyncTests(TestCase):
         Source.objects.create(key="gamerpower", enabled=False)
         self.assertTrue(sync()["paused"])
         fetch.assert_not_called()
+
+    def test_catalog_recheck_is_cautious_and_does_not_auto_restore(self, fetch):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import Offer
+        fetch.return_value = [row(1), row(2)]
+        sync()
+        offer = Offer.objects.create(observation=Observation.objects.get(external_id=1),
+            channel="lead", checked_at=timezone.now(), ends_at=timezone.now()+timedelta(days=1))
+        fetch.side_effect = TimeoutError()
+        with self.assertRaises(TimeoutError):
+            sync()
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state, "available")
+        fetch.side_effect = None
+        fetch.return_value = [row(2)]
+        self.assertEqual(sync()["missing_for_review"], 1)
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state, "suspect")
+        fetch.return_value = [row(1), row(2)]
+        sync()
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state, "suspect")
+        offer.review_state = "available"
+        offer.save()
+        fetch.return_value = [dict(row(1), platforms="iOS"), row(2)]
+        sync()
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state, "suspect")

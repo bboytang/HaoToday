@@ -58,3 +58,25 @@ class PublicTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, "已结束展示")
         self.assertNotContains(response, 'class="go"')
+
+    def test_unavailable_link_has_explanation_without_stale_directions(self):
+        self.offer.channel = "lead"
+        self.offer.steps = "不应再展示的步骤"
+        for state in ("suspect", "withdrawn"):
+            self.offer.review_state = state
+            self.offer.status_reason = "资格规则有误，已暂停"
+            self.offer.save()
+            self.assertNotContains(self.client.get("/?channel=lead"), self.offer.title)
+            response = self.client.get(self.url)
+            self.assertContains(response, self.offer.status_reason)
+            self.assertNotContains(response, self.offer.official_url)
+            self.assertNotContains(response, self.offer.steps)
+
+    def test_future_offer_not_actionable(self):
+        self.offer.channel = "lead"
+        self.offer.starts_at = timezone.now() + timedelta(minutes=10)
+        self.offer.save()
+        self.assertNotContains(self.client.get("/?channel=lead"), self.offer.title)
+        response = self.client.get(self.url)
+        self.assertContains(response, "尚未开始")
+        self.assertNotContains(response, self.offer.official_url)

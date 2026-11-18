@@ -37,6 +37,15 @@ class Offer(models.Model):
         LEAD = "lead", "抢先线索"
         VERIFIED = "verified", "已验证"
 
+    class ReviewState(models.TextChoices):
+        AVAILABLE = "available", "正常展示"
+        SUSPECT = "suspect", "疑似失效，正在复查"
+        WITHDRAWN = "withdrawn", "已撤回"
+
+    review_state = models.CharField("复查状态", max_length=10, choices=ReviewState, default=ReviewState.AVAILABLE, db_default="available")
+    status_reason = models.CharField("停展原因（公开）", max_length=240, blank=True, db_default="", default="")
+    starts_at = models.DateTimeField("活动开始时间（未知可不填）", null=True, blank=True)
+
     observation = models.OneToOneField(Observation, on_delete=models.PROTECT, verbose_name="发现记录")
     channel = models.CharField("频道", max_length=10, choices=Channel, default=Channel.DRAFT)
     title = models.CharField("权益", max_length=180)
@@ -61,6 +70,13 @@ class Offer(models.Model):
 
     class Meta:
         constraints = [models.CheckConstraint(
+            name="status_requires_public_reason",
+            condition=models.Q(review_state="available") | (
+                models.Q(review_state__in=["suspect", "withdrawn"]) & models.Q(status_reason__regex=r"\S")),
+        ), models.CheckConstraint(
+            name="end_after_known_start",
+            condition=models.Q(starts_at__isnull=True) | models.Q(ends_at__gt=models.F("starts_at")),
+        ), models.CheckConstraint(
             name="verified_requires_price_and_evidence",
             condition=~models.Q(channel="verified") | models.Q(
                 payable_fen__isnull=False, shipping_fen__isnull=False, membership_fen__isnull=False,
@@ -92,3 +108,12 @@ class OfferRevision(models.Model):
 
     class Meta:
         ordering = ["-id"]
+
+
+class RuleAnalysis(models.Model):
+    digest = models.CharField(max_length=64, unique=True)
+    model = models.CharField(max_length=48)
+    prompt_version = models.CharField(max_length=24)
+    excerpts = models.JSONField()
+    usage = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)

@@ -35,8 +35,8 @@ class ObservationAdmin(ReadOnlyAdmin):
 
 @admin.register(Offer)
 class OfferAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "channel", "ends_at")
-    list_filter = ("channel", "category")
+    list_display = ("title", "category", "channel", "review_state", "ends_at")
+    list_filter = ("channel", "category", "review_state")
     raw_id_fields = ("observation",)
 
 

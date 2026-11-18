@@ -6,7 +6,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Observation, Run, Source
+from .models import Observation, Offer, Run, Source
 
 URL = "https://www.gamerpower.com/api/giveaways?type=game"
 
@@ -56,11 +56,23 @@ def sync():
                     if created:
                         counts["baseline" if first else "new"] += 1
                     elif obj.facts != facts:
+                        if any(obj.facts.get(k) != facts[k] for k in ("end_date", "platforms", "title")):
+                            Offer.objects.filter(observation=obj, review_state=Offer.ReviewState.AVAILABLE,
+                                channel__in=[Offer.Channel.LEAD, Offer.Channel.VERIFIED],
+                                ends_at__gt=timezone.now()).update(review_state=Offer.ReviewState.SUSPECT,
+                                status_reason="发现来源的权益名称、期限或适用平台已变化，暂停领取指引，等待复核。")
                         obj.facts = facts
                         obj.save(update_fields=["facts", "updated"])
                         counts["changed"] += 1
                     else:
                         counts["unchanged"] += 1
+                # 只有整批验证成功才检查消失项，网络失败绝不判定过期。
+                active = Offer.objects.filter(observation__source=source,
+                    channel__in=[Offer.Channel.LEAD, Offer.Channel.VERIFIED],
+                    review_state=Offer.ReviewState.AVAILABLE, ends_at__gt=timezone.now())
+                counts["missing_for_review"] = active.exclude(observation__external_id__in=ids).update(
+                    review_state=Offer.ReviewState.SUSPECT,
+                    status_reason="发现来源的当前目录已不再列出此项，领取入口暂停展示，等待官方依据复核。")
                 source.last_success = timezone.now()
                 source.save(update_fields=["last_success"])
             run.status = "ok" if source.enabled else "paused"

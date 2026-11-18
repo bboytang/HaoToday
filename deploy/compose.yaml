@@ -22,6 +22,7 @@ services:
         condition: service_healthy
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
+      ZHIPUAI_API_KEY: ${ZHIPUAI_API_KEY:-}
       DJANGO_ALLOWED_HOSTS: 8kraw.cloud
       PGHOST: db
       PGDATABASE: haotoday

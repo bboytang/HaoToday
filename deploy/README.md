@@ -6,3 +6,7 @@
 
 ## 定时发现
 服务器 systemd 使用本目录同名前缀的 service/timer，每 30 分钟完成一次非重叠的单次采集，写入独立 Run。状态：systemctl list-timers --all haotoday-discovery.timer；日志：journalctl -u haotoday-discovery.service。仅停止调度：systemctl disable --now haotoday-discovery.timer。停用来源另用 Source.enabled；这些操作都不影响网站。
+
+## 智谱规则摘录（可选）
+模型固定 glm-4.7-flash，使用智谱国内 BigModel 的 chat/completions。由服务器管理员用编辑器将 ZHIPUAI_API_KEY 写入 /opt/haotoday/.env（0600），在同目录执行 docker compose up -d app 使环境生效。不要使用带明文密钥的命令、不要粘贴到聊天、不要打印 docker inspect 或展开后的 compose 配置。
+把**经审核可发给智谱的公开条款**通过标准输入传入 docker compose exec -T app python manage.py analyze_rules；不要发送 HAR、订单、个人账号、密钥。当前只按需调用，不会自动扣费处理每次采集。失败不影响站点，结果只是待审核摘录。模型使用了多少 token 以成功响应的 usage 记录为准。
