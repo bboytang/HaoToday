@@ -8,7 +8,7 @@ from urllib.request import Request, build_opener
 from django.db import transaction
 from django.utils import timezone
 from .gamerpower import NoRedirect
-from .models import Observation, Run, Source
+from .models import Observation, Offer, Run, Source
 
 
 def fen(value):
@@ -95,6 +95,9 @@ def sync(key):
                 if created:
                     counts["baseline" if first else "new"]+=1
                 elif item.facts!=facts:
+                    Offer.objects.filter(observation=item,review_state="available",
+                        channel__in=["lead","verified"],ends_at__gt=timezone.now()).update(
+                            review_state="suspect",status_reason="供应方商品报价或条件发生变化，暂停指引，等待复核。")
                     item.facts=facts
                     item.save(update_fields=["facts","updated"])
                     counts["changed"]+=1

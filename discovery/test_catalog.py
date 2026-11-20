@@ -42,3 +42,29 @@ class CatalogTests(TestCase):
     def test_source_defaults_paused(self,fetch):
         self.assertTrue(sync("fixture")["paused"])
         fetch.assert_not_called()
+
+    @patch("discovery.catalog.fetch")
+    def test_changed_supplier_quote_pauses_public_directions(self,fetch):
+        from datetime import timedelta
+        from django.utils import timezone
+        Source.objects.create(key="zhetaoke-tb-catalog")
+        fetch.return_value=[row()]
+        sync("fixture")
+        offer=Offer.objects.create(observation=Observation.objects.get(),channel="lead",title="测试袜子",
+            checked_at=timezone.now(),ends_at=timezone.now()+timedelta(hours=1),
+            official_url="https://example.org/item",evidence_url="https://example.org/rules",
+            cost="供应方报价1元，运费未知")
+        page=self.client.get(f"/offers/{offer.pk}/")
+        self.assertContains(page,"折淘客商品目录")
+        self.assertContains(page,"支出信息（待核实）")
+        self.assertContains(page,"来源接口说明")
+        self.assertNotContains(page,"GamerPower")
+        fetch.return_value=[row()|{"size":"4.00","quanhou_jiage":"2.00"}]
+        sync("fixture")
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")
+        self.assertNotContains(self.client.get(f"/offers/{offer.pk}/"),'class="go"')
+        fetch.return_value=[row()]
+        sync("fixture")
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")
