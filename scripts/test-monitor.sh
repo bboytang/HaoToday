@@ -20,8 +20,10 @@ echo fixture > backups/daily-20261118.dump
 "$monitor"
 if DOWN=haotoday-shopping.timer "$monitor" > result; then exit 1; fi
 grep -F "shopping.timer inactive" result
+if DOWN=haotoday-catalog.timer "$monitor" > result; then exit 1; fi
+grep -F "catalog.timer inactive" result
 touch -d '27 hours ago' backups/daily-20261118.dump
 if DOWN=haotoday-discovery.timer HEART=1 FRESH=f "$monitor" > result; then exit 1; fi
-for msg in 'discovery.timer inactive' 'push worker no recent exit' 'discovery no confirmed success' 'daily backup missing or stale' 'shopping no completed sample'; do
+for msg in 'discovery.timer inactive' 'push worker no recent exit' 'discovery no confirmed success' 'daily backup missing or stale' 'shopping no completed sample' 'catalog no completed recheck'; do
     grep -F "$msg" result
 done

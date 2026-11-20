@@ -4,7 +4,7 @@ set -eu -o pipefail
 failed=0
 alarm() { printf 'ALERT %s\n' "$1"; failed=1; }
 
-for name in discovery push backup shopping; do
+for name in discovery push backup shopping catalog; do
     systemctl is-active --quiet "haotoday-$name.timer" || alarm "$name.timer inactive"
     result=$(systemctl show --value -p Result "haotoday-$name.service") || result=unknown
     [[ $result == success ]] || alarm "$name.service not successful"
@@ -30,6 +30,12 @@ shopping=$(docker compose exec -T db psql -XAt -v ON_ERROR_STOP=1 -U haotoday -d
     WHERE s.key='zhetaoke-jd' AND s.enabled AND r.status='partial'
       AND r.finished BETWEEN now()-interval '10 minutes' AND now());") || shopping=unknown
 [[ $shopping == t ]] || alarm 'shopping no completed sample (10m) or database unavailable'
+
+catalog=$(docker compose exec -T db psql -XAt -v ON_ERROR_STOP=1 -U haotoday -d haotoday -c "
+    SELECT EXISTS(SELECT 1 FROM discovery_run r JOIN discovery_source s ON r.source_id=s.id
+    WHERE s.key='zhetaoke-tb-catalog' AND s.enabled AND r.status='partial'
+      AND r.finished BETWEEN now()-interval '40 minutes' AND now());") || catalog=unknown
+[[ $catalog == t ]] || alarm 'catalog no completed recheck (40m) or database unavailable'
 
 # 只认定时任务命名的非空归档，不用升级前备份冒充；可恢复性由独立演练验证。
 archive=$(find backups -maxdepth 1 -type f -name 'daily-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].dump' -size +0c -mmin -1560 ! -newermt now -print -quit) || archive=

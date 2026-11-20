@@ -1,0 +1,9 @@
+[Unit]
+Description=HaoToday bounded supplier quote recheck, not checkout verification
+After=docker.service network-online.target
+Requires=docker.service
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/haotoday
+ExecStart=/usr/bin/docker compose run --rm -T --user 0:0 --volume /opt/haotoday/.zhetaoke-key:/run/secrets/zhetaoke-key:ro app python manage.py sync_shopping --catalog
+TimeoutStartSec=70s

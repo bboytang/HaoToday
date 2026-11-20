@@ -103,6 +103,12 @@ def sync(key):
                     counts["changed"]+=1
                 else:
                     counts["unchanged"]+=1
+            # 有效样本中无法再确认曾公开的报价，先停指引，不宣称下架或过期。
+            # 这可能是排序/价格区间变化；网络失败不会走到这里。
+            counts["unconfirmed_public"]=Offer.objects.filter(observation__source=source,
+                review_state="available",channel__in=["lead","verified"],ends_at__gt=timezone.now()
+                ).exclude(observation__external_id__in=[code for code,_ in entries]).update(
+                    review_state="suspect",status_reason="当前供应方样本未能重新确认本条报价，暂停指引；不代表活动已结束。")
             run.status="partial"
             run.finished=timezone.now()
             run.counts=counts

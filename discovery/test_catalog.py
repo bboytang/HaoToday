@@ -68,3 +68,23 @@ class CatalogTests(TestCase):
         sync("fixture")
         offer.refresh_from_db()
         self.assertEqual(offer.review_state,"suspect")
+
+    @patch("discovery.catalog.fetch")
+    def test_missing_quote_pauses_but_network_failure_does_not_claim_expiry(self,fetch):
+        from datetime import timedelta
+        from django.utils import timezone
+        Source.objects.create(key="zhetaoke-tb-catalog")
+        fetch.return_value=[row()]
+        sync("fixture")
+        offer=Offer.objects.create(observation=Observation.objects.get(),channel="lead",
+            checked_at=timezone.now(),ends_at=timezone.now()+timedelta(hours=1))
+        fetch.side_effect=TimeoutError()
+        with self.assertRaises(TimeoutError):sync("fixture")
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"available")
+        fetch.side_effect=None
+        fetch.return_value=[]
+        self.assertEqual(sync("fixture")["unconfirmed_public"],1)
+        offer.refresh_from_db()
+        self.assertEqual(offer.review_state,"suspect")
+        self.assertIn("不代表活动已结束",offer.status_reason)

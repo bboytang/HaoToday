@@ -1,0 +1,8 @@
+[Unit]
+Description=Recheck bounded supplier catalog every fifteen minutes
+[Timer]
+OnActiveSec=3s
+OnUnitInactiveSec=15min
+AccuracySec=10s
+[Install]
+WantedBy=timers.target
