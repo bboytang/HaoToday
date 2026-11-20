@@ -37,3 +37,4 @@ CheapShark 的两条实测零价候选均与现有基线重合，ITAD 有 Key/�
 成本复测见 ARCHITECTURE.md 与 deploy/resource-report.sh；2026-11-18 的首个瞬时样本不是峰值/月费用。下一步在采集/投递运行时取样，等满一周用供应商账单与真实审核工时对账；没有自动新增核验通过的活动时单位成本保持不可计算。
 
 本次登录变更回退见 deploy/README.md，服务器保留 Caddyfile.before-user-login 与 compose.before-user-login.yaml；应用回退 t04-assets-1 会恢复旧密码校验。无需回退数据库。
+2026-11-20 下一步已收敛：优先折淘客线报 API 的真实购物样本，而非普通券商品瀑布流。详见 SOURCES_AND_QUALITY 最后一节；已安全检查服务器仅变量名，尚无购物凭据配置。已问用户是否有折淘客账号，勿重复索要明文密钥。未调用需认证业务接口、未开发空适配器；取得本人凭据与使用范围后先有限样本验证，不启动全量轮询。
