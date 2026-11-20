@@ -61,3 +61,7 @@ docker compose run --rm -T --user 0:0 --volume /opt/haotoday/.zhetaoke-key:/run/
 
 
 购物自动任务 haotoday-shopping.timer 在每批结束两分钟后再运行，不并发；service 超时100秒，失败不会发布数据，下次仍按有限窗口采样。单批最多两次请求，密钥只挂一次性容器。巡检检查timer/service以及10分钟内partial完成批次；partial只证明窗口采样完成，不证明全网覆盖、窗口无漏采或有效福利产量。失败及无候选不得伪造成功商品。日志见 `journalctl -u haotoday-shopping.service --since today`。本机告警仍未接外部接收渠道。
+
+## 无联盟的淘系目录候选
+使用现有key的一次性采样：先在后台/服务器将 Source key=zhetaoke-tb-catalog 的 enabled 设置为 True，再执行上面的 sync_shopping 命令并追加 --catalog。不创建新的定时器，不调用需要sid/pid的商品详情。固定拉一页最多10个供应方券后价0–1元商品；仍标partial，不承诺全量。
+quoted_* 字段仅为供应方报价，shipping_fen=None，不映射为Offer实付。金额按十进制精确转分，空值/负数/NaN/异常精度拒绝整批；算术或满减门槛不符转hold。虚拟补差/工业小件转exclude，瑕疵转hold，其余仍需规格、运费及个人资格核验。旧记录更新不自动撤回或发布，不能以列表价格证明所有SKU和地区均可购买。
