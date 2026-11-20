@@ -207,3 +207,7 @@ scripts/check.sh 60项通过，含NaN/负价/异常小数/门槛不符、URL协�
 发现原目录仅手动采样，且涨价退出0–1元样本时无法触发已有变价分支。最小补丁对已公开项无法再次确认报价时先暂停（不称过期）；网络失败不触发缺失判断，不自动恢复/延长。新增catalog.service/timer 15分钟周期和40分钟完成心跳巡检。
 scripts/check.sh 62项通过，含网络失败保留、有效缺失暂停；test-monitor.sh与systemd-analyze verify通过。部署catalog-watch-1，无迁移，备份pre-upgrade-20261120T164754Z.dump；旧monitor摘要058741d8afeb300a1bf2cbacad7b900ee5b8a8f609e80c263cf06856bb07533c，服务器留monitor.before-catalog.sh。
 timer于16:48:18 UTC自动启动，16:48:21完成partial：10未变、unconfirmed_public=0，Result=success；巡检Result=success。公网360/1280px #6报价/运费警示及零支出隔离复测通过。此为供应方有限样本复查，不是商家结算或实际领券成功，也未证明整段长期运行。
+
+### 2026-11-20 UTC · T04 AI真实购物规则单条诊断
+从服务器私有样本选线报44045950，移除URL与HTML，只发送公开规则正文。先固定17.9实际支出锚点、首单/凑单资格、未知截止，再调用既有GLM适配器，未让模型控制发布。单次HTTP429/1305，0.2秒，无usage或摘录，立即停止。不将错误计作字段不准确，也不声称AI已完成购物筛选。原先一次成功摘录证据保留。
+最初环境检查尝试在应用容器使用宿主路径/opt/haotoday，实际退出127（该目录未挂载）；修复为宿主只读脱敏文本后经标准输入交给应用manage.py shell，没有挂载密钥或原始采样文件。之后真实请求才返回上述供应方错误。只读复核购物和目录服务Result=success，两timer active；无业务代码/部署变更。官方文档检索未取得精确1305条目，不猜测其账号根因。
