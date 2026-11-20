@@ -48,3 +48,11 @@ ssh -T root@43.143.230.174 'cd /opt/haotoday && docker compose exec -T app pytho
 ssh -t root@43.143.230.174 'python3 /opt/haotoday/configure-shopping-key.py'
 ```
 两次隐藏输入 appkey，保存至服务器 /opt/haotoday/.zhetaoke-key，0600；不覆盖现有文件、不修改 .env、不联网、不启用采集。该文件尚未接入业务容器，保存成功不等于接口或真实商品验证成功。后续只在服务器读取用于小样本测试，不打印完整请求 URL（供应方采用查询参数携带 key）。该文件不属于数据库备份；轮换/删除前先核对未来调用方。不要用 echo key 或命令行参数传入。
+
+## 有限购物采样（未启用定时器）
+key 仅供一次性采集容器以只读挂载读取，不挂给网站进程，也不放入环境变量。确认来源准入后先显式启用 zhetaoke-jd（新源默认关闭），在 /opt/haotoday 执行：
+```sh
+docker compose exec -T app python manage.py shell -v0 -c 'from discovery.models import Source; Source.objects.update_or_create(key="zhetaoke-jd",defaults={"enabled":True})'
+docker compose run --rm -T --user 0:0 --volume /opt/haotoday/.zhetaoke-key:/run/secrets/zhetaoke-key:ro app python manage.py sync_shopping
+```
+只读京东最近10分钟，串行最多两页（中间等待6秒），不跟随任何商品链接，内部记录号唯一，不复制群号和图片，不创建 Offer。结果 partial 永远不表示完整目录；page_cap_reached 提醒窗口可能截断，不可拿没出现的商品判失效或推进完整水位。首次入库算基线；再次看到同号只更新或跳过。文本相似分组只供复核，不能合并不同SKU。停用方式：后台关闭该来源，或 SSH 用 Source.objects.filter(key="zhetaoke-jd").update(enabled=False)；现阶段没有定时任务。HTTP失败只输出异常类型，避免带key的URL泄漏。

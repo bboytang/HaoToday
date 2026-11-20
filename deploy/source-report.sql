@@ -9,6 +9,7 @@ WITH batches AS (
         count(*) FILTER (WHERE status='failed') AS failed,
         count(*) FILTER (WHERE status='running') AS running,
         count(*) FILTER (WHERE status='paused') AS paused,
+        count(*) FILTER (WHERE status='partial') AS partial,
         count(DISTINCT started::date) FILTER (WHERE status='ok') AS ok_days,
         max(finished) FILTER (WHERE status='ok') AS last_ok
     FROM discovery_run
@@ -17,18 +18,18 @@ WITH batches AS (
 ), cohort AS (
     SELECT o.source_id,
         count(*) FILTER (WHERE r.status='manual') AS manual_candidates,
-        count(*) FILTER (WHERE r.status='ok' AND o.baseline) AS baseline_candidates,
-        count(*) FILTER (WHERE r.status='ok' AND NOT o.baseline) AS new_candidates,
-        count(*) FILTER (WHERE r.status='ok' AND NOT o.baseline AND f.channel='verified' AND f.review_state='available'
+        count(*) FILTER (WHERE r.status IN ('ok','partial') AND o.baseline) AS baseline_candidates,
+        count(*) FILTER (WHERE r.status IN ('ok','partial') AND NOT o.baseline) AS new_candidates,
+        count(*) FILTER (WHERE r.status IN ('ok','partial') AND NOT o.baseline AND f.channel='verified' AND f.review_state='available'
             AND (f.starts_at IS NULL OR f.starts_at <= now()) AND f.ends_at > now()) AS new_verified_live
     FROM discovery_observation o
-    JOIN discovery_run r ON r.id=o.first_run_id AND r.status IN ('ok','manual')
+    JOIN discovery_run r ON r.id=o.first_run_id AND r.status IN ('ok','partial','manual')
     LEFT JOIN discovery_offer f ON f.observation_id=o.id
     WHERE r.started >= now()-interval '14 days' AND r.started < now()
     GROUP BY o.source_id
 )
 SELECT s.key, s.enabled, coalesce(ok,0) AS ok, coalesce(failed,0) AS failed,
-    coalesce(running,0) AS running, coalesce(paused,0) AS paused,
+    coalesce(running,0) AS running, coalesce(paused,0) AS paused, coalesce(partial,0) AS partial,
     coalesce(ok_days,0) AS ok_days, last_ok,
     round(100.0*ok/nullif(ok+failed,0),1) AS completed_ok_pct,
     coalesce(manual_candidates,0) AS manual_candidates, coalesce(baseline_candidates,0) AS baseline_candidates, coalesce(new_candidates,0) AS new_candidates,
