@@ -28,7 +28,7 @@ haotoday-backup.timer 计划每天北京时间 03:15 执行，漏跑由 systemd 
 真正故障切换仍须人工决策：停本站采集和投递及其 timer，暂停账号写入；恢复到新隔离环境，校验业务与迁移，再核对备份时间之后的账号注销、撤权和投递记录。无法确认设备授权或已发状态时，保持投递关闭，禁止盲目重播。保留故障现场和可回切的数据卷。此脚本不会切换站点，不会迁移私有 .env/VAPID、TLS 或邮件凭据；加密异机备份、密钥独立保管、故障切换和告警尚待验收。
 
 ## 内测巡检
-deploy/monitor.sh 与两份 haotoday-monitor unit 放在 /opt/haotoday，脚本可执行；将 unit 安装至 /etc/systemd/system 后执行 `systemctl daemon-reload && systemctl enable --now haotoday-monitor.timer && systemctl start haotoday-monitor.service`。主机需 python3、GNU find、systemd、Docker Compose。每五分钟检查三个定时器与服务结果、推送 worker 三分钟心跳、已启用 GamerPower 最近九十分钟成功批次、二十六小时内非空日备份。查看 `journalctl -u haotoday-monitor.service --since today`。失败先查对应 service 日志与只读来源报表，不自动重启或重发。若有计划地停源，预期水位告警；新增准入源需更新监控。当前仅本机 journal 告警，不能发现整机掉线或证明手机送达。移除巡检可单独执行 `systemctl disable --now haotoday-monitor.timer`，不影响业务定时器。
+deploy/monitor.sh 与两份 haotoday-monitor unit 放在 /opt/haotoday，脚本可执行；将 unit 安装至 /etc/systemd/system 后执行 `systemctl daemon-reload && systemctl enable --now haotoday-monitor.timer && systemctl start haotoday-monitor.service`。主机需 python3、GNU find、systemd、Docker Compose。每五分钟检查四个定时器与服务结果、推送 worker 三分钟心跳、已启用 GamerPower 最近九十分钟成功批次、二十六小时内非空日备份。查看 `journalctl -u haotoday-monitor.service --since today`。失败先查对应 service 日志与只读来源报表，不自动重启或重发。若有计划地停源，预期水位告警；新增准入源需更新监控。当前仅本机 journal 告警，不能发现整机掉线或证明手机送达。移除巡检可单独执行 `systemctl disable --now haotoday-monitor.timer`，不影响业务定时器。
 
 恢复副本专用库名为 haotoday_recovery。部署 restore-drill.sh 必须同时提供同目录 quarantine-restored-push.sql。其保守策略是放弃副本中所有旧设备投递历史及积压，不重发；不删除站内消息、收藏或订阅规则。真正切换时，仍须停写、隔离、核对账号注销等备份后的变化，确认后由用户在设备页重新开启提醒。禁止为在现网运行清理语句而改动库名保护。原归档不变。验证非空积压请在本机运行 scripts/test-restore-queue.sh，不向现网造测试设备。
 
@@ -49,12 +49,15 @@ ssh -t root@43.143.230.174 'python3 /opt/haotoday/configure-shopping-key.py'
 ```
 两次隐藏输入 appkey，保存至服务器 /opt/haotoday/.zhetaoke-key，0600；不覆盖现有文件、不修改 .env、不联网、不启用采集。该文件尚未接入业务容器，保存成功不等于接口或真实商品验证成功。后续只在服务器读取用于小样本测试，不打印完整请求 URL（供应方采用查询参数携带 key）。该文件不属于数据库备份；轮换/删除前先核对未来调用方。不要用 echo key 或命令行参数传入。
 
-## 有限购物采样（未启用定时器）
+## 有限购物采样（已启用两分钟内部采样）
 key 仅供一次性采集容器以只读挂载读取，不挂给网站进程，也不放入环境变量。确认来源准入后先显式启用 zhetaoke-jd（新源默认关闭），在 /opt/haotoday 执行：
 ```sh
 docker compose exec -T app python manage.py shell -v0 -c 'from discovery.models import Source; Source.objects.update_or_create(key="zhetaoke-jd",defaults={"enabled":True})'
 docker compose run --rm -T --user 0:0 --volume /opt/haotoday/.zhetaoke-key:/run/secrets/zhetaoke-key:ro app python manage.py sync_shopping
 ```
-只读京东最近10分钟，串行最多两页（中间等待6秒），不跟随任何商品链接，内部记录号唯一，不复制群号和图片，不创建 Offer。结果 partial 永远不表示完整目录；page_cap_reached 提醒窗口可能截断，不可拿没出现的商品判失效或推进完整水位。首次入库算基线；再次看到同号只更新或跳过。文本相似分组只供复核，不能合并不同SKU。停用方式：后台关闭该来源，或 SSH 用 Source.objects.filter(key="zhetaoke-jd").update(enabled=False)；现阶段没有定时任务。HTTP失败只输出异常类型，避免带key的URL泄漏。
+只读京东最近10分钟，串行最多两页（中间等待6秒），不跟随任何商品链接，内部记录号唯一，不复制群号和图片，不创建 Offer。结果 partial 永远不表示完整目录；page_cap_reached 提醒窗口可能截断，不可拿没出现的商品判失效或推进完整水位。首次入库算基线；再次看到同号只更新或跳过。文本相似分组只供复核，不能合并不同SKU。停用方式：先 systemctl disable --now haotoday-shopping.timer，并等待当前 service 结束，再在后台关闭该来源。计划停用会产生巡检告警，应记录维护原因。HTTP失败只输出异常类型，避免带key的URL泄漏。
 
 购物存量内部初筛可执行 `docker compose exec -T app python manage.py sync_shopping --review-saved`，不读取 key、不联网，只更新尚无公开 Offer 的候选初筛。返卡/返现（含本批出现的“饭卡”等谐写）与凑单先标 hold，不从返卡面值反算零元。关键词命中含否定句时也会保守暂缓，人工复核后再判断，不表示已确认虚假。未命中仍是待审，不自动成为优先发布。
+
+
+购物自动任务 haotoday-shopping.timer 在每批结束两分钟后再运行，不并发；service 超时100秒，失败不会发布数据，下次仍按有限窗口采样。单批最多两次请求，密钥只挂一次性容器。巡检检查timer/service以及10分钟内partial完成批次；partial只证明窗口采样完成，不证明全网覆盖、窗口无漏采或有效福利产量。失败及无候选不得伪造成功商品。日志见 `journalctl -u haotoday-shopping.service --since today`。本机告警仍未接外部接收渠道。

@@ -1,0 +1,10 @@
+[Unit]
+Description=Sample bounded JD shopping window every two minutes
+
+[Timer]
+OnActiveSec=3s
+OnUnitInactiveSec=2min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

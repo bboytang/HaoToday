@@ -178,3 +178,7 @@ scripts/check.sh 55项通过，含20行重叠去重、重复采样、错误批�
 
 ### 2026-11-20 UTC · T07 低总支出目标定向验证
 使用服务器私有key，两次受限请求取q=1元和q=0.01的京东24h窗口小样本，各10条。原始响应仅私有 .zhetaoke-low-probe.json / .zhetaoke-cent-probe.json；无新定时任务、业务写入或发布。人工核对0.01组中额外红包及直播红包雨条件，未取得固定实付依据。随后本机未登录Chromium打开垃圾袋下单短链和数据线短链，前者只到京东中转页，后者要求登录。未提交身份信息、验证码、订单或领取动作；不把中转200或低价标题当核验通过。新增来源判断和交接，无代码/部署变更。
+
+### 2026-11-20 16:31 UTC · T07 低频自动购物采样与停转监控
+新增 haotoday-shopping.service/timer，一次性容器只读挂载凭据，100秒超时、完成后2分钟再触发。不变更应用镜像、数据库或公开发布。主机巡检增加购物timer/service和10分钟内partial批次心跳。
+本机 scripts/test-monitor.sh、bash -n 与 systemd-analyze verify 均通过，含购物timer失活和完成心跳过旧的替身故障。服务器原monitor SHA256 8c38135858fbbc5f484ecb9ccc8a2af561c5209b7e407d6dae1e6052a3923624，备份monitor.before-shopping.sh。安装enable后未手动启动购物service，timer自动触发于16:31:32 UTC，16:31:41完成：20新记录，page_cap_reached=true，Result=success；SQL确认run为partial且购物Offer仍0。巡检Result=success，下次触发时刻列为16:33:41 UTC。停止与回退见README；本轮仅证明首次自动触发，不宣称长期稳定或真机通知。
