@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from django.test import TestCase
 from .models import Observation,Offer,Run,Source
-from .shopping import sync, assess, review_saved
+from .shopping import sync, assess, review_saved, fetch_page as real_fetch_page
 
 def row(code):
     return dict(code=str(code),plat="2",content="测试实物 1元 https://example.org/item",
@@ -48,3 +48,19 @@ class ShoppingTests(TestCase):
         self.assertEqual(review_saved(),{"hold":1,"review":0})
         fetch.assert_not_called()
         self.assertFalse(Offer.objects.exists())
+
+    def test_empty_http_200_is_failure_not_an_empty_catalog(self,fetch,sleep):
+        import json
+        from unittest.mock import MagicMock
+        fetch.return_value=[row(1)]
+        sync("fixture")
+        response=MagicMock()
+        response.read.return_value=b""
+        with patch("discovery.shopping.build_opener") as opener:
+            opener.return_value.open.return_value.__enter__.return_value=response
+            fetch.side_effect=lambda *args: real_fetch_page(*args)
+            with self.assertRaises(json.JSONDecodeError):
+                sync("fixture")
+        self.assertEqual(Observation.objects.count(),1)
+        self.assertEqual(Run.objects.order_by("-id").first().status,"failed")
+        self.assertEqual(Observation.objects.get().facts["triage"]["tier"],"review")
