@@ -1,4 +1,4 @@
 {% extends "discovery/base.html" %}
 {% block title %}账号登录 · HaoToday{% endblock %}
-{% block body %}<h1>登录你的账号</h1><p>个人账号用于保存收藏。内测站访问口令不是个人账号。{% if registration %}<a href="{% url 'signup' %}">注册邮箱账号</a>{% else %}暂未开放公众注册。{% endif %}{% if recovery %} · <a href="{% url 'password_reset' %}">忘记密码</a>{% endif %}</p>
+{% block body %}<h1>登录你的账号</h1><p>使用个人账号登录，管理收藏、订阅和设备提醒。{% if registration %}<a href="{% url 'signup' %}">注册邮箱账号</a>{% else %}暂未开放公众注册。{% endif %}{% if recovery %} · <a href="{% url 'password_reset' %}">忘记密码</a>{% endif %}</p>
 <form method="post">{% csrf_token %}{{ form.as_p }}<input type="hidden" name="next" value="{{ next }}"><button>登录</button></form>{% endblock %}

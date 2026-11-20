@@ -48,3 +48,21 @@ class AccountTests(TestCase):
                 self.assertEqual(Client().post("/account/login/", {"username":"bad","password":"wrong"}).status_code, 200)
             self.assertEqual(Client().post("/account/login/", {"username":"bad","password":"wrong"}).status_code, 429)
         self.assertEqual(AccountRateWindow.objects.count(), 2)
+
+    def test_password_policy_only_requires_six_characters(self):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        for password in ("123456", "abcdef", "测试密码六字符"):
+            validate_password(password)
+        with self.assertRaises(ValidationError):
+            validate_password("12345")
+
+    @override_settings(REGISTRATION_OPEN=True, ACCOUNT_MAIL_ENABLED=True,
+                       EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", DEFAULT_FROM_EMAIL="test@example.org")
+    def test_activation_accepts_six_digits_but_rejects_five(self):
+        self.client.post("/account/signup/", {"email":"six@example.org"})
+        link = re.search(r"https://8kraw.cloud([^\s]+)", mail.outbox[0].body)[1]
+        self.assertEqual(self.client.post(link, {"new_password1":"12345","new_password2":"12345"}).status_code,200)
+        self.assertFalse(get_user_model().objects.filter(username="six@example.org").exists())
+        self.assertRedirects(self.client.post(link, {"new_password1":"123456","new_password2":"123456"}), "/account/login/")
+        self.assertTrue(self.client.login(username="six@example.org",password="123456"))
