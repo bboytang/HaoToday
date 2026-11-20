@@ -56,3 +56,5 @@ docker compose exec -T app python manage.py shell -v0 -c 'from discovery.models 
 docker compose run --rm -T --user 0:0 --volume /opt/haotoday/.zhetaoke-key:/run/secrets/zhetaoke-key:ro app python manage.py sync_shopping
 ```
 只读京东最近10分钟，串行最多两页（中间等待6秒），不跟随任何商品链接，内部记录号唯一，不复制群号和图片，不创建 Offer。结果 partial 永远不表示完整目录；page_cap_reached 提醒窗口可能截断，不可拿没出现的商品判失效或推进完整水位。首次入库算基线；再次看到同号只更新或跳过。文本相似分组只供复核，不能合并不同SKU。停用方式：后台关闭该来源，或 SSH 用 Source.objects.filter(key="zhetaoke-jd").update(enabled=False)；现阶段没有定时任务。HTTP失败只输出异常类型，避免带key的URL泄漏。
+
+购物存量内部初筛可执行 `docker compose exec -T app python manage.py sync_shopping --review-saved`，不读取 key、不联网，只更新尚无公开 Offer 的候选初筛。返卡/返现（含本批出现的“饭卡”等谐写）与凑单先标 hold，不从返卡面值反算零元。关键词命中含否定句时也会保守暂缓，人工复核后再判断，不表示已确认虚假。未命中仍是待审，不自动成为优先发布。

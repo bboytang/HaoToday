@@ -30,6 +30,17 @@ def fetch_page(key, page):
     return rows
 
 
+def assess(text):
+    # 只辅助审核排序。保留原文；常见“饭卡/返卡”谐写不当作现金抵扣。
+    if re.search(r"[返饭反]\s*(?:\d+(?:\.\d+)?\s*[元亓]?)?\s*(?:超市)?卡|返现|返款",text):
+        tier,reason="hold","需返卡或返款；宣传到手价不能替代首次实付"
+    elif re.search(r"凑[单単]|[湊凑]単|[湊凑]单",text):
+        tier,reason="hold","需凑单，完整购物车支出待核对"
+    else:
+        tier,reason="review","购物线报待核对规格、总实付和配送条件"
+    return {"tier":tier,"reason":reason,"version":1}
+
+
 def normalize(row):
     code=str(row["code"])
     content=row["content"]
@@ -43,7 +54,7 @@ def normalize(row):
     facts=dict(title=grouped[:180],text=text,product_ref=str(row.get("num_id",""))[:512],
         source_time=str(row.get("add_time",""))[:80],
         text_group=hashlib.sha256(grouped.encode()).hexdigest(),
-        triage={"tier":"review","reason":"购物线报待核对规格、总实付和配送条件"})
+        triage=assess(text))
     return int(code),facts
 
 
@@ -101,3 +112,15 @@ def sync(key):
     except Exception as exc:
         Run.objects.filter(pk=run.pk).update(status="failed",finished=timezone.now(),error=type(exc).__name__)
         raise
+
+@transaction.atomic
+def review_saved():
+    source=Source.objects.select_for_update().get(key="zhetaoke-jd")
+    counts={"hold":0,"review":0}
+    for item in Observation.objects.filter(source=source,offer__isnull=True):
+        assessment=assess(item.facts["text"])
+        counts[assessment["tier"]]+=1
+        if item.facts.get("triage")!=assessment:
+            item.facts["triage"]=assessment
+            item.save(update_fields=["facts","updated"])
+    return counts

@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from django.test import TestCase
 from .models import Observation,Offer,Run,Source
-from .shopping import sync
+from .shopping import sync, assess, review_saved
 
 def row(code):
     return dict(code=str(code),plat="2",content="测试实物 1元 https://example.org/item",
@@ -36,3 +36,15 @@ class ShoppingTests(TestCase):
         Source.objects.update(enabled=False)
         self.assertTrue(sync("fixture")["paused"])
         fetch.assert_not_called()
+
+    def test_rebate_is_not_low_cash_price(self,fetch,sleep):
+        for text in ("拍下19.9亓，饭10超市卡", "返卡后0.92", "饭卡后到手0.92", "需凑単", "先买后返现"):
+            self.assertEqual(assess(text)["tier"],"hold")
+        self.assertEqual(assess("无需返卡，实际价格待查")["tier"],"hold")  # 保守召回，交由人复核
+        self.assertEqual(assess("1元实物，规则待查")["tier"],"review")
+        fetch.return_value=[dict(row(1),content="拍下19.9亓，饭10超市卡")]
+        sync("fixture")
+        fetch.reset_mock()
+        self.assertEqual(review_saved(),{"hold":1,"review":0})
+        fetch.assert_not_called()
+        self.assertFalse(Offer.objects.exists())
