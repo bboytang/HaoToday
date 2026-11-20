@@ -182,3 +182,7 @@ scripts/check.sh 55项通过，含20行重叠去重、重复采样、错误批�
 ### 2026-11-20 16:31 UTC · T07 低频自动购物采样与停转监控
 新增 haotoday-shopping.service/timer，一次性容器只读挂载凭据，100秒超时、完成后2分钟再触发。不变更应用镜像、数据库或公开发布。主机巡检增加购物timer/service和10分钟内partial批次心跳。
 本机 scripts/test-monitor.sh、bash -n 与 systemd-analyze verify 均通过，含购物timer失活和完成心跳过旧的替身故障。服务器原monitor SHA256 8c38135858fbbc5f484ecb9ccc8a2af561c5209b7e407d6dae1e6052a3923624，备份monitor.before-shopping.sh。安装enable后未手动启动购物service，timer自动触发于16:31:32 UTC，16:31:41完成：20新记录，page_cap_reached=true，Result=success；SQL确认run为partial且购物Offer仍0。巡检Result=success，下次触发时刻列为16:33:41 UTC。停止与回退见README；本轮仅证明首次自动触发，不宣称长期稳定或真机通知。
+
+### 2026-11-20 UTC · T04 商品落地与详情服务范围
+复核新线报44046079的两个低价电动牙刷链接，匿名Chromium均跳京东登录页面，无结算/配送证据，不发布。读供应方全网商品详情一手文档，确认unionId及正常推广的额外条件；未用现有线报key盲测详情权限或向HTTP端点发送密钥。已询问用户是否有本人京东联盟授权，不索取Cookie/验证码。
+同时只读复核timer第二次自主执行：16:33:50 UTC成功partial批次，20新内部记录，仍触达页上限；与16:31:41首次完成分开，不是手动重启。证明重复自动调度已发生，不证明连续数日供给或有效商品产量。无业务/部署改动。
