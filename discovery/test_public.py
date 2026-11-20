@@ -285,3 +285,20 @@ class PublicTests(TestCase):
         self.assertNotEqual(check(updated)["ETag"],updated)
         Offer.objects.filter(pk=self.offer.pk).update(ends_at=timezone.now()-timedelta(seconds=1))
         self.assertEqual(check(tag).status_code,304)
+
+    def test_shopping_is_separate_from_other_home_picks(self):
+        self.prepare_verified()
+        self.offer.category="购物"
+        self.offer.required_purchase_fen=0
+        self.offer.no_asset_exchange=True
+        self.offer.save()
+        home=self.client.get("/")
+        self.assertEqual(list(home.context["shopping"]),[self.offer])
+        self.assertEqual(list(home.context["picks"]),[])
+        self.assertContains(home,self.offer.title,count=1)
+        self.offer.channel="lead"
+        self.offer.save()
+        home=self.client.get("/")
+        self.assertContains(home,"暂时没有核实通过的购物羊毛")
+        self.assertNotContains(home,self.offer.title)
+        self.assertContains(self.client.get("/feed/?category=购物&channel=lead"),self.offer.title)

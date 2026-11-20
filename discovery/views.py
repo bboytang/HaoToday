@@ -24,10 +24,11 @@ def home(request):
     if {"channel", "page", "q", "category", "platform", "region", "zero"}.intersection(request.GET):
         return feed(request)
     active = available_offers()
-    picks = active.filter(channel=Offer.Channel.VERIFIED).select_related("observation__source").order_by("-checked_at", "-id")[:3]
+    shopping = active.filter(channel=Offer.Channel.VERIFIED, category="购物").select_related("observation__source").order_by("-checked_at", "-id")[:3]
+    picks = active.filter(channel=Offer.Channel.VERIFIED).exclude(category="购物").select_related("observation__source").order_by("-checked_at", "-id")[:3]
     upcoming = Offer.objects.filter(channel__in=[Offer.Channel.VERIFIED, Offer.Channel.LEAD],
         review_state=Offer.ReviewState.AVAILABLE, starts_at__gt=timezone.now()).order_by("starts_at", "id")[:3]
-    return render(request, "discovery/home.html", {"picks": picks, "upcoming": upcoming,
+    return render(request, "discovery/home.html", {"picks": picks, "shopping": shopping, "upcoming": upcoming,
         "lead_count": active.filter(channel=Offer.Channel.LEAD).count()})
 
 
