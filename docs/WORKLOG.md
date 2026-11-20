@@ -162,3 +162,6 @@ scripts/check.sh：51 项通过，新增 5 位拒绝、6 位纯数字接受及�
 
 ### 2026-11-20 · 购物来源凭据安全入口
 新增独立交互脚本 configure-shopping-key.py，写服务器专有 0600 文件，不改既有业务、不联网，不允许管道输入、覆盖或跟随已有符号链接。python3 scripts/test-shopping-key.py 两项测试通过，覆盖权限、格式拒绝及不可覆盖；py_compile 通过。服务器部署脚本后以无终端 SSH 调用，预期拒绝；没有输入或取得真实密钥，不宣称源已接入。操作命令见 deploy/README.md。
+
+### 2026-11-20 16:14 UTC · 等待购物凭据期间的实态复核
+只检查服务器 .zhetaoke-key 是否非空，返回 SHOPPING_KEY_MISSING，未读取值；monitor Result=success，discovery timer active。重新只读运行 source-report.sql：GamerPower 102 成功、1 失败、14 基线、2 非基线新增（3853/3854，均无公开 Offer），当前新增已验证 0。上界 P90 30.08 分钟仅是目录首见窗口。失败类 TimeoutError，后续成功已证实恢复。购物公开条目 SQL count=0。保留新增为数字内部候选，不为了产量发布或重复扩游戏源；购物真实样本仍被本人接口凭据阻断，无新增业务或部署变更。
